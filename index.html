@@ -12,7 +12,6 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
 .page-title { font-size: 17px; font-weight: 500; }
 .page-sub { font-size: 12px; color: #888; margin-top: 2px; }
 .header-row { display: flex; align-items: center; justify-content: space-between; margin-bottom: 1rem; }
-.card { background: #fff; border: 0.5px solid #ddd; border-radius: 12px; padding: 1rem 1.25rem; margin-bottom: 1rem; }
 .section-title { font-size: 11px; font-weight: 600; color: #888; text-transform: uppercase; letter-spacing: .05em; margin: 1rem 0 .6rem; }
 .budget-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: .5rem; }
 .budget-grid-4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-bottom: .5rem; }
@@ -27,18 +26,16 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
 .btn { display: inline-flex; align-items: center; gap: 6px; padding: 7px 14px; border-radius: 8px; border: 0.5px solid #ccc; background: #fff; font-size: 13px; font-weight: 500; cursor: pointer; color: #1a1a1a; font-family: inherit; }
 .btn:hover { background: #f5f4f0; }
 .btn-green { background: #E1F5EE; border-color: #1D9E75; color: #085041; }
-.btn-green:hover { background: #c8eddf; }
 .btn-red { background: #FCEBEB; border-color: #E24B4A; color: #A32D2D; }
-.btn-red:hover { background: #f5d5d5; }
+.btn-amber { background: #FFF8E6; border-color: #F0C040; color: #7A5500; }
 .btn-ghost { background: none; border: none; cursor: pointer; color: #888; padding: 4px; font-size: 13px; font-family: inherit; }
-.btn-ghost:hover { color: #1a1a1a; }
 input[type=text], input[type=number], input[type=date], input[type=password], select, textarea { background: #fff; border: 0.5px solid #ccc; border-radius: 8px; padding: 7px 10px; font-size: 13px; color: #1a1a1a; font-family: inherit; outline: none; }
 input:focus, select:focus, textarea:focus { border-color: #7F77DD; box-shadow: 0 0 0 2px #7F77DD22; }
 textarea { width: 100%; resize: vertical; min-height: 60px; }
 .form-grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 8px; }
 .form-grid2 input, .form-grid2 select { width: 100%; }
 .form-full { width: 100%; margin-bottom: 8px; }
-.form-actions { display: flex; gap: 8px; margin-top: 4px; }
+.form-actions { display: flex; gap: 8px; margin-top: 4px; flex-wrap: wrap; }
 .pill { display: inline-flex; padding: 4px 12px; border-radius: 99px; font-size: 12px; font-weight: 500; cursor: pointer; border: 0.5px solid #ddd; background: transparent; color: #888; font-family: inherit; }
 .pills { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 10px; }
 .entry { background: #fff; border: 0.5px solid #ddd; border-radius: 10px; padding: 12px 14px; margin-bottom: 8px; }
@@ -48,9 +45,9 @@ textarea { width: 100%; resize: vertical; min-height: 60px; }
 .entry-badge { font-size: 11px; font-weight: 500; padding: 1px 8px; border-radius: 99px; border-width: 0.5px; border-style: solid; }
 .entry-note { font-size: 12px; color: #888; font-style: italic; }
 .entry-reason { font-size: 12px; color: #A32D2D; margin-top: 6px; padding: 6px 10px; background: #FCEBEB; border-radius: 6px; }
-.entry-actions { display: flex; gap: 8px; margin-top: 10px; }
+.entry-actions { display: flex; gap: 8px; margin-top: 10px; flex-wrap: wrap; }
 .reject-form { margin-top: 10px; padding-top: 10px; border-top: 0.5px solid #eee; }
-.status-pending { background: #FFF8E6; color: #7A5500; border-color: #F0C040; }
+.status-pending  { background: #FFF8E6; color: #7A5500; border-color: #F0C040; }
 .status-approved { background: #E1F5EE; color: #085041; border-color: #1D9E75; }
 .status-rejected { background: #FCEBEB; color: #A32D2D; border-color: #F09595; }
 .empty { text-align: center; padding: 2.5rem 0; color: #888; font-size: 14px; }
@@ -68,26 +65,22 @@ textarea { width: 100%; resize: vertical; min-height: 60px; }
 .login-label { font-size: 12px; color: #888; margin-bottom: 6px; display: block; }
 .login-inp { width: 100%; margin-bottom: 12px; }
 .login-btn { width: 100%; padding: 9px; border-radius: 8px; border: none; background: #7F77DD; color: #fff; font-size: 14px; font-weight: 500; cursor: pointer; font-family: inherit; margin-top: 4px; }
-.login-btn:hover { background: #6b63c9; }
 .login-err { font-size: 12px; color: #A32D2D; margin-top: 8px; text-align: center; }
 .logout-btn { font-size: 11px; color: #888; background: none; border: none; cursor: pointer; font-family: inherit; padding: 0; }
 .cb-edit-inp { width: 100%; font-size: 13px; border: 0.5px solid #ccc; border-radius: 6px; padding: 5px 8px; font-family: inherit; margin-top: 4px; }
-.cb-edit-inp:focus { outline: none; border-color: #7F77DD; }
 .cb-actions { display: flex; gap: 6px; margin-top: 6px; }
 .cb-btn { font-size: 11px; padding: 3px 10px; border-radius: 6px; border: 0.5px solid #ccc; background: #fff; cursor: pointer; font-family: inherit; }
 .cb-ghost { background: none; border: none; font-size: 11px; cursor: pointer; color: #888; font-family: inherit; padding: 3px 0; }
 .month-bar { display: flex; align-items: center; gap: 10px; background: #fff; border: 0.5px solid #ddd; border-radius: 10px; padding: 10px 14px; margin-bottom: 1rem; flex-wrap: wrap; }
-.month-bar select { font-size: 13px; padding: 5px 8px; }
-.month-label { font-size: 13px; font-weight: 500; color: #1a1a1a; }
+.month-label { font-size: 13px; font-weight: 500; }
 .fy-label { font-size: 11px; color: #888; }
 .tab-bar { display: flex; background: #eee; border-radius: 99px; padding: 3px; margin-bottom: 1rem; width: fit-content; }
-.tab-btn { padding: 6px 18px; border-radius: 99px; font-size: 13px; font-weight: 500; cursor: pointer; border: none; background: transparent; color: #888; font-family: inherit; transition: all .15s; }
+.tab-btn { padding: 6px 18px; border-radius: 99px; font-size: 13px; font-weight: 500; cursor: pointer; border: none; background: transparent; color: #888; font-family: inherit; }
 .tab-btn.active { background: #fff; color: #1a1a1a; box-shadow: 0 1px 4px rgba(0,0,0,.1); }
-.summary-wrap { overflow-x: auto; margin-top: 4px; margin-bottom: 1.5rem; }
+.summary-wrap { overflow-x: auto; margin-bottom: 1.5rem; }
 .summary-table { border-collapse: collapse; width: 100%; font-size: 11px; min-width: 600px; }
 .summary-table th { background: #f5f4f0; padding: 7px 10px; text-align: left; font-weight: 600; color: #888; border-bottom: 0.5px solid #ddd; white-space: nowrap; }
 .summary-table td { padding: 7px 10px; border-bottom: 0.5px solid #f0f0f0; vertical-align: top; }
-.summary-table tr:last-child td { border-bottom: none; }
 .summary-table .month-cell { font-weight: 500; white-space: nowrap; }
 .summary-table .num { font-size: 11px; }
 .summary-table .over { color: #A32D2D; }
@@ -120,9 +113,22 @@ var MONTHS = ["April","May","June","July","August","September","October","Novemb
 var fmt = function(n) { return "\u20B9" + Number(n).toLocaleString("en-IN", { maximumFractionDigits: 0 }); };
 var pct = function(a, b) { return b > 0 ? Math.min(100, Math.round((a / b) * 100)) : 0; };
 var today = function() { return new Date().toISOString().slice(0, 10); };
+
 function currentMonthYear() { var d = new Date(); return { month: MONTHS[d.getMonth()], year: d.getFullYear() }; }
-function getFY(month, year) { var idx = MONTHS.indexOf(month); if (idx <= 8) return "FY " + year + "-" + String(year + 1).slice(2); else return "FY " + (year - 1) + "-" + String(year).slice(2); }
+function getFY(month, year) { var idx = MONTHS.indexOf(month); if (idx <= 8) return "FY " + year + "-" + String(year+1).slice(2); else return "FY " + (year-1) + "-" + String(year).slice(2); }
 function monthKey(month, year) { return month + "-" + year; }
+
+// Backwards compatible: if entry has no monthKey, derive from its date field
+function getEntryMonthKey(entry) {
+  if (entry.monthKey && entry.monthKey.trim() !== "") return entry.monthKey;
+  if (entry.date) {
+    var d = new Date(entry.date);
+    if (!isNaN(d.getTime())) return MONTHS[d.getMonth()] + "-" + d.getFullYear();
+  }
+  var cur = currentMonthYear();
+  return monthKey(cur.month, cur.year);
+}
+
 var cur = currentMonthYear();
 var state = {
   loggedIn: false, role: null, loginError: "", pwInput: "", roleInput: "purchase",
@@ -133,6 +139,7 @@ var state = {
   rejectingId: null, rejectReason: "", editingBudget: null, budgetInput: "",
   selMonth: cur.month, selYear: cur.year
 };
+
 function setState(patch) { for (var k in patch) { state[k] = patch[k]; } render(); }
 function api(payload, cb) {
   fetch(SCRIPT_URL, { method: "POST", body: JSON.stringify(payload) })
@@ -153,228 +160,258 @@ function getBudgetsForMonth(month, year) {
   return result;
 }
 function getPrevMonthBudgets(month, year) {
-  var idx = MONTHS.indexOf(month), prevMonth, prevYear;
-  if (idx === 0) { prevMonth = MONTHS[11]; prevYear = year - 1; } else { prevMonth = MONTHS[idx - 1]; prevYear = year; }
-  return getBudgetsForMonth(prevMonth, prevYear);
+  var idx = MONTHS.indexOf(month), pm, py;
+  if (idx === 0) { pm = MONTHS[11]; py = year-1; } else { pm = MONTHS[idx-1]; py = year; }
+  return getBudgetsForMonth(pm, py);
 }
 function el(tag, attrs) {
   var e = document.createElement(tag);
-  var children = Array.prototype.slice.call(arguments, 2);
-  if (attrs) { Object.keys(attrs).forEach(function(k) { var v = attrs[k]; if (k === "style" && typeof v === "object") { Object.assign(e.style, v); } else if (k.indexOf("on") === 0) { e.addEventListener(k.slice(2).toLowerCase(), v); } else if (k === "className") { e.className = v; } else { e.setAttribute(k, v); } }); }
-  children.forEach(function(c) { if (c == null) return; if (Array.isArray(c)) { c.forEach(function(x) { if (x != null) e.appendChild(typeof x === "string" ? document.createTextNode(x) : x); }); } else { e.appendChild(typeof c === "string" ? document.createTextNode(c) : c); } });
+  var ch = Array.prototype.slice.call(arguments, 2);
+  if (attrs) { Object.keys(attrs).forEach(function(k) { var v = attrs[k]; if (k==="style"&&typeof v==="object") { Object.assign(e.style,v); } else if (k.indexOf("on")===0) { e.addEventListener(k.slice(2).toLowerCase(),v); } else if (k==="className") { e.className=v; } else { e.setAttribute(k,v); } }); }
+  ch.forEach(function(c) { if (c==null) return; if (Array.isArray(c)) { c.forEach(function(x) { if (x!=null) e.appendChild(typeof x==="string"?document.createTextNode(x):x); }); } else { e.appendChild(typeof c==="string"?document.createTextNode(c):c); } });
   return e;
 }
 function icon(name) { var i = document.createElement("i"); i.className = "ti ti-" + name; return i; }
-function progressBar(value, max, color) { var p = pct(value, max); return el("div", { className: "progress-track" }, el("div", { className: "progress-bar", style: { width: p + "%", background: p >= 90 ? "#E24B4A" : color } })); }
+function progressBar(value, max, color) { var p = pct(value, max); return el("div",{className:"progress-track"},el("div",{className:"progress-bar",style:{width:p+"%",background:p>=90?"#E24B4A":color}})); }
+
 function budgetCard(key, budget, spent, pend, editable, month, year) {
-  var col = CAT_COLOR[key] || { fill: "#f0f0f0", stroke: "#aaa", text: "#444" };
-  var rem = budget - spent, editKey = key + "|" + month + "|" + year, isEditing = state.editingBudget === editKey;
-  var card = el("div", { className: "budget-card", style: { borderColor: col.stroke } });
-  card.appendChild(el("div", { className: "bc-label", style: { color: col.text } }, key));
-  if (editable && isEditing) {
-    var inp = el("input", { className: "cb-edit-inp", type: "number", placeholder: "Amount" });
-    inp.value = state.budgetInput;
-    inp.addEventListener("input", function(e) { state.budgetInput = e.target.value; });
-    var kk = key, mm = month, yy = year;
-    inp.addEventListener("keydown", function(e) { if (e.key === "Enter") saveBudget(kk, mm, yy); });
-    setTimeout(function() { inp.focus(); }, 30);
-    card.appendChild(inp);
-    var acts = el("div", { className: "cb-actions" });
-    acts.appendChild(el("button", { className: "cb-btn", onClick: function() { saveBudget(kk, mm, yy); } }, "Set"));
-    acts.appendChild(el("button", { className: "cb-ghost", onClick: function() { setState({ editingBudget: null }); } }, "Cancel"));
+  var col = CAT_COLOR[key]||{fill:"#f0f0f0",stroke:"#aaa",text:"#444"}, rem = budget-spent, ek = key+"|"+month+"|"+year, isEd = state.editingBudget===ek;
+  var card = el("div",{className:"budget-card",style:{borderColor:col.stroke}});
+  card.appendChild(el("div",{className:"bc-label",style:{color:col.text}},key));
+  if (editable && isEd) {
+    var inp = el("input",{className:"cb-edit-inp",type:"number",placeholder:"Amount"}); inp.value=state.budgetInput;
+    inp.addEventListener("input",function(e){state.budgetInput=e.target.value;});
+    var kk=key,mm=month,yy=year; inp.addEventListener("keydown",function(e){if(e.key==="Enter")saveBudget(kk,mm,yy);});
+    setTimeout(function(){inp.focus();},30); card.appendChild(inp);
+    var acts=el("div",{className:"cb-actions"});
+    acts.appendChild(el("button",{className:"cb-btn",onClick:function(){saveBudget(kk,mm,yy);}},"Set"));
+    acts.appendChild(el("button",{className:"cb-ghost",onClick:function(){setState({editingBudget:null});}},"Cancel"));
     card.appendChild(acts);
   } else {
-    var numRow = el("div", { style: { display: "flex", alignItems: "baseline", gap: "4px" } });
-    numRow.appendChild(el("span", { className: "bc-num" }, budget > 0 ? fmt(budget) : "\u2014"));
-    if (editable) { var kk2=key,mm2=month,yy2=year,bud2=budget,ek2=editKey; var eb = el("button", { className: "btn-ghost", style: { padding: "0", fontSize: "11px" }, onClick: function() { setState({ editingBudget: ek2, budgetInput: bud2 || "" }); } }); eb.appendChild(icon("edit")); numRow.appendChild(eb); }
-    card.appendChild(numRow);
-    if (budget > 0) {
-      card.appendChild(el("div", { className: "bc-spent" }, "Approved: " + fmt(spent)));
-      if (pend > 0) card.appendChild(el("div", { className: "bc-pending" }, "Pending: " + fmt(pend)));
-      card.appendChild(el("div", { className: "bc-remaining", style: { color: rem < 0 ? "#A32D2D" : col.text } }, rem < 0 ? "Over " + fmt(Math.abs(rem)) : "Left: " + fmt(rem)));
-      card.appendChild(progressBar(spent, budget, col.stroke));
-    } else { card.appendChild(el("div", { className: "bc-spent" }, editable ? "Tap \u270E to set" : "Not set")); }
+    var nr=el("div",{style:{display:"flex",alignItems:"baseline",gap:"4px"}});
+    nr.appendChild(el("span",{className:"bc-num"},budget>0?fmt(budget):"\u2014"));
+    if (editable) { var kk2=key,mm2=month,yy2=year,b2=budget,ek2=ek; var eb=el("button",{className:"btn-ghost",style:{padding:"0",fontSize:"11px"},onClick:function(){setState({editingBudget:ek2,budgetInput:b2||""}); }}); eb.appendChild(icon("edit")); nr.appendChild(eb); }
+    card.appendChild(nr);
+    if (budget>0) {
+      card.appendChild(el("div",{className:"bc-spent"},"Approved: "+fmt(spent)));
+      if (pend>0) card.appendChild(el("div",{className:"bc-pending"},"Pending: "+fmt(pend)));
+      card.appendChild(el("div",{className:"bc-remaining",style:{color:rem<0?"#A32D2D":col.text}},rem<0?"Over "+fmt(Math.abs(rem)):"Left: "+fmt(rem)));
+      card.appendChild(progressBar(spent,budget,col.stroke));
+    } else { card.appendChild(el("div",{className:"bc-spent"},editable?"Tap \u270E to set":"Not set")); }
   }
   return card;
 }
-function tryLogin() { var role = state.roleInput, pw = state.pwInput; if (pw === PASSWORDS[role]) { setState({ loggedIn: true, role: role, loginError: "", pwInput: "" }); loadData(); } else { setState({ loginError: "Incorrect password. Please try again." }); } }
-function render() { var root = document.getElementById("root"); root.innerHTML = ""; if (!state.loggedIn) { renderLogin(root); return; } var wrap = el("div", { id: "app" }); root.appendChild(wrap); renderApp(wrap); }
+
+function tryLogin() { var role=state.roleInput,pw=state.pwInput; if(pw===PASSWORDS[role]){setState({loggedIn:true,role:role,loginError:"",pwInput:""});loadData();}else{setState({loginError:"Incorrect password. Please try again."});} }
+function render() { var root=document.getElementById("root"); root.innerHTML=""; if(!state.loggedIn){renderLogin(root);return;} var wrap=el("div",{id:"app"}); root.appendChild(wrap); renderApp(wrap); }
+
 function renderLogin(root) {
-  var wrap = el("div", { className: "login-wrap" }), card = el("div", { className: "login-card" });
-  card.appendChild(el("div", { className: "login-logo" }, "D\u2019chica"));
-  card.appendChild(el("div", { className: "login-sub" }, "Production Budget Manager"));
-  card.appendChild(el("label", { className: "login-label" }, "I am"));
-  var roleSel = el("select", { className: "login-inp" });
-  var o1 = el("option", { value: "purchase" }, "Purchase Manager"), o2 = el("option", { value: "accounts" }, "Accounts");
-  if (state.roleInput === "accounts") o2.selected = true;
-  roleSel.appendChild(o1); roleSel.appendChild(o2);
-  roleSel.addEventListener("change", function(e) { state.roleInput = e.target.value; });
-  card.appendChild(roleSel);
-  card.appendChild(el("label", { className: "login-label" }, "Password"));
-  var pwInp = el("input", { type: "password", placeholder: "Enter your password", className: "login-inp" });
-  pwInp.value = state.pwInput;
-  pwInp.addEventListener("input", function(e) { state.pwInput = e.target.value; });
-  pwInp.addEventListener("keydown", function(e) { if (e.key === "Enter") tryLogin(); });
-  setTimeout(function() { pwInp.focus(); }, 50);
-  card.appendChild(pwInp);
-  card.appendChild(el("button", { className: "login-btn", onClick: tryLogin }, "Sign in"));
-  if (state.loginError) card.appendChild(el("div", { className: "login-err" }, state.loginError));
-  wrap.appendChild(card); root.appendChild(wrap);
+  var wrap=el("div",{className:"login-wrap"}),card=el("div",{className:"login-card"});
+  card.appendChild(el("div",{className:"login-logo"},"D\u2019chica"));
+  card.appendChild(el("div",{className:"login-sub"},"Production Budget Manager"));
+  card.appendChild(el("label",{className:"login-label"},"I am"));
+  var rs=el("select",{className:"login-inp"}),o1=el("option",{value:"purchase"},"Purchase Manager"),o2=el("option",{value:"accounts"},"Accounts");
+  if(state.roleInput==="accounts")o2.selected=true; rs.appendChild(o1);rs.appendChild(o2);
+  rs.addEventListener("change",function(e){state.roleInput=e.target.value;});
+  card.appendChild(rs);
+  card.appendChild(el("label",{className:"login-label"},"Password"));
+  var pw=el("input",{type:"password",placeholder:"Enter your password",className:"login-inp"}); pw.value=state.pwInput;
+  pw.addEventListener("input",function(e){state.pwInput=e.target.value;});
+  pw.addEventListener("keydown",function(e){if(e.key==="Enter")tryLogin();});
+  setTimeout(function(){pw.focus();},50); card.appendChild(pw);
+  card.appendChild(el("button",{className:"login-btn",onClick:tryLogin},"Sign in"));
+  if(state.loginError)card.appendChild(el("div",{className:"login-err"},state.loginError));
+  wrap.appendChild(card);root.appendChild(wrap);
 }
+
 function renderApp(app) {
-  var data=state.data, role=state.role, showForm=state.showForm, filterStatus=state.filterStatus, filterCat=state.filterCat, form=state.form, rejectingId=state.rejectingId, loading=state.loading, syncing=state.syncing, syncOk=state.syncOk, error=state.error, selMonth=state.selMonth, selYear=state.selYear, activeTab=state.activeTab;
-  var mkey=monthKey(selMonth,selYear), budgets=getBudgetsForMonth(selMonth,selYear);
-  var hasAnyBudget=ALL_KEYS.some(function(k){return budgets[k]>0;}), prevBudgets=getPrevMonthBudgets(selMonth,selYear), prevHasBudget=ALL_KEYS.some(function(k){return prevBudgets[k]>0;});
-  var monthEntries=(data.entries||[]).filter(function(e){return e.monthKey===mkey;});
-  var catApproved={}, catPending={};
-  ALL_KEYS.forEach(function(k){ catApproved[k]=monthEntries.filter(function(e){return e.status==="approved"&&e.category===k;}).reduce(function(s,e){return s+Number(e.amount);},0); catPending[k]=monthEntries.filter(function(e){return e.status==="pending"&&e.category===k;}).reduce(function(s,e){return s+Number(e.amount);},0); });
-  var grandBudget=ALL_KEYS.reduce(function(s,k){return s+budgets[k];},0), grandApproved=ALL_KEYS.reduce(function(s,k){return s+catApproved[k];},0);
-  var pendingCount=monthEntries.filter(function(e){return e.status==="pending";}).length;
-  var listEntries=monthEntries.filter(function(e){ return (filterStatus==="All"||e.status===filterStatus.toLowerCase())&&(filterCat==="All"||e.category===filterCat); });
-  app.appendChild(el("div",{className:"header-row"},el("div",{},el("div",{className:"page-title"},"Production budget"),el("div",{className:"page-sub"},grandBudget>0?"Total "+fmt(grandBudget)+" \u00B7 Approved "+fmt(grandApproved)+" \u00B7 "+pct(grandApproved,grandBudget)+"% used":selMonth+" "+selYear+" \u00B7 No budgets set")),el("div",{style:{display:"flex",gap:"8px",alignItems:"center"}},el("button",{className:"btn-ghost",onClick:loadData},icon("refresh")),el("button",{className:"logout-btn",onClick:function(){setState({loggedIn:false,role:null,pwInput:"",roleInput:"purchase"});}}),"Sign out")));
-  var dotClass="dot"+(syncing?" spin":syncOk===true?" green":syncOk===false?" red":"");
-  app.appendChild(el("div",{className:"sync-bar"},el("span",{className:dotClass}),syncing?"Syncing...":syncOk===true?"Synced with Google Sheets":syncOk===false?"Error: "+(error||"check connection"):"Connecting..."));
+  var data=state.data,role=state.role,showForm=state.showForm,filterStatus=state.filterStatus,filterCat=state.filterCat,form=state.form,rejectingId=state.rejectingId,loading=state.loading,syncing=state.syncing,syncOk=state.syncOk,error=state.error,selMonth=state.selMonth,selYear=state.selYear,activeTab=state.activeTab;
+  var mkey=monthKey(selMonth,selYear),budgets=getBudgetsForMonth(selMonth,selYear);
+  var hasAny=ALL_KEYS.some(function(k){return budgets[k]>0;}),prevB=getPrevMonthBudgets(selMonth,selYear),prevHas=ALL_KEYS.some(function(k){return prevB[k]>0;});
+
+  // Backwards compatible month filtering
+  var me=(data.entries||[]).filter(function(e){ return getEntryMonthKey(e)===mkey; });
+  var ca={},cp={};
+  ALL_KEYS.forEach(function(k){
+    ca[k]=me.filter(function(e){return e.status==="approved"&&e.category===k;}).reduce(function(s,e){return s+Number(e.amount);},0);
+    cp[k]=me.filter(function(e){return e.status==="pending"&&e.category===k;}).reduce(function(s,e){return s+Number(e.amount);},0);
+  });
+  var gb=ALL_KEYS.reduce(function(s,k){return s+budgets[k];},0),ga=ALL_KEYS.reduce(function(s,k){return s+ca[k];},0);
+  var pc=me.filter(function(e){return e.status==="pending";}).length;
+  var le=me.filter(function(e){
+    return (filterStatus==="All"||e.status===filterStatus.toLowerCase())&&(filterCat==="All"||e.category===filterCat);
+  });
+
+  app.appendChild(el("div",{className:"header-row"},
+    el("div",{},el("div",{className:"page-title"},"Production budget"),el("div",{className:"page-sub"},gb>0?"Total "+fmt(gb)+" \u00B7 Approved "+fmt(ga)+" \u00B7 "+pct(ga,gb)+"% used":selMonth+" "+selYear+" \u00B7 No budgets set")),
+    el("div",{style:{display:"flex",gap:"8px",alignItems:"center"}},el("button",{className:"btn-ghost",onClick:loadData},icon("refresh")),el("button",{className:"logout-btn",onClick:function(){setState({loggedIn:false,role:null,pwInput:"",roleInput:"purchase"});}},"Sign out"))
+  ));
+  var dc="dot"+(syncing?" spin":syncOk===true?" green":syncOk===false?" red":"");
+  app.appendChild(el("div",{className:"sync-bar"},el("span",{className:dc}),syncing?"Syncing...":syncOk===true?"Synced":syncOk===false?"Error: "+(error||"check"):"Connecting..."));
   if(loading){app.appendChild(el("div",{className:"loading"},"Loading..."));return;}
-  var mbar=el("div",{className:"month-bar"});
-  mbar.appendChild(el("span",{className:"month-label"},"Viewing:"));
-  var mSel=el("select",{});
-  MONTHS.forEach(function(m){var o=el("option",{value:m},m);if(m===selMonth)o.selected=true;mSel.appendChild(o);});
-  mSel.addEventListener("change",function(e){setState({selMonth:e.target.value,filterStatus:"All",filterCat:"All"});});
-  var ySel=el("select",{});
-  var baseYear=new Date().getFullYear();
-  for(var y=baseYear-2;y<=baseYear+1;y++){var yo=el("option",{value:y},String(y));if(y===selYear)yo.selected=true;ySel.appendChild(yo);}
-  ySel.addEventListener("change",function(e){setState({selYear:parseInt(e.target.value),filterStatus:"All",filterCat:"All"});});
-  mbar.appendChild(mSel);mbar.appendChild(ySel);mbar.appendChild(el("span",{className:"fy-label"},getFY(selMonth,selYear)));
-  app.appendChild(mbar);
-  if(role==="accounts"&&!hasAnyBudget&&prevHasBudget){var cfBanner=el("div",{style:{background:"#FFF8E6",border:"0.5px solid #F0C040",borderRadius:"10px",padding:"12px 14px",marginBottom:"1rem",fontSize:"13px",color:"#7A5500"}});cfBanner.appendChild(document.createTextNode("No budgets set for "+selMonth+" "+selYear+". "));cfBanner.appendChild(el("button",{className:"btn",style:{fontSize:"12px",padding:"5px 12px"},onClick:function(){carryForward();}},"Copy from previous month"));app.appendChild(cfBanner);}
-  var tabs=el("div",{className:"tab-bar"});
-  tabs.appendChild(el("button",{className:"tab-btn"+(activeTab==="budget"?" active":""),onClick:function(){setState({activeTab:"budget"});}},"\u2022 Budget & Requests"));
-  tabs.appendChild(el("button",{className:"tab-btn"+(activeTab==="summary"?" active":""),onClick:function(){setState({activeTab:"summary"});}},"\u2022 Monthly Summary"));
-  app.appendChild(tabs);
+
+  var mb=el("div",{className:"month-bar"});mb.appendChild(el("span",{className:"month-label"},"Viewing:"));
+  var ms=el("select",{});MONTHS.forEach(function(m){var o=el("option",{value:m},m);if(m===selMonth)o.selected=true;ms.appendChild(o);});
+  ms.addEventListener("change",function(e){setState({selMonth:e.target.value,filterStatus:"All",filterCat:"All"});});
+  var ys=el("select",{});for(var y=new Date().getFullYear()-2;y<=new Date().getFullYear()+1;y++){var yo=el("option",{value:y},String(y));if(y===selYear)yo.selected=true;ys.appendChild(yo);}
+  ys.addEventListener("change",function(e){setState({selYear:parseInt(e.target.value),filterStatus:"All",filterCat:"All"});});
+  mb.appendChild(ms);mb.appendChild(ys);mb.appendChild(el("span",{className:"fy-label"},getFY(selMonth,selYear)));app.appendChild(mb);
+
+  if(role==="accounts"&&!hasAny&&prevHas){
+    var cf=el("div",{style:{background:"#FFF8E6",border:"0.5px solid #F0C040",borderRadius:"10px",padding:"12px 14px",marginBottom:"1rem",fontSize:"13px",color:"#7A5500"}});
+    cf.appendChild(document.createTextNode("No budgets set for "+selMonth+" "+selYear+". "));
+    cf.appendChild(el("button",{className:"btn",style:{fontSize:"12px",padding:"5px 12px"},onClick:function(){carryForward();}},"Copy from previous month"));
+    app.appendChild(cf);
+  }
+
+  var tb=el("div",{className:"tab-bar"});
+  tb.appendChild(el("button",{className:"tab-btn"+(activeTab==="budget"?" active":""),onClick:function(){setState({activeTab:"budget"});}},"Budget & Requests"));
+  tb.appendChild(el("button",{className:"tab-btn"+(activeTab==="summary"?" active":""),onClick:function(){setState({activeTab:"summary"});}},"Monthly Summary"));
+  app.appendChild(tb);
   if(activeTab==="summary"){renderSummary(app);return;}
-  var editable=role==="accounts";
+
+  var ed=role==="accounts";
   app.appendChild(el("div",{className:"section-title"},"Fabric"));
-  var fg=el("div",{className:"budget-grid"});
-  FABRIC_KEYS.forEach(function(k){fg.appendChild(budgetCard(k,budgets[k],catApproved[k],catPending[k],editable,selMonth,selYear));});
-  app.appendChild(fg);
+  var fg=el("div",{className:"budget-grid"});FABRIC_KEYS.forEach(function(k){fg.appendChild(budgetCard(k,budgets[k],ca[k],cp[k],ed,selMonth,selYear));});app.appendChild(fg);
   app.appendChild(el("div",{className:"section-title"},"Other Categories"));
-  var og=el("div",{className:"budget-grid"});
-  OTHER_KEYS.forEach(function(k){og.appendChild(budgetCard(k,budgets[k],catApproved[k],catPending[k],editable,selMonth,selYear));});
-  app.appendChild(og);
+  var og=el("div",{className:"budget-grid"});OTHER_KEYS.forEach(function(k){og.appendChild(budgetCard(k,budgets[k],ca[k],cp[k],ed,selMonth,selYear));});app.appendChild(og);
   app.appendChild(el("div",{className:"section-title"},"MCF (Additional Budget)"));
-  var mg=el("div",{className:"budget-grid-4"});
-  MCF_KEYS.forEach(function(k){mg.appendChild(budgetCard(k,budgets[k],catApproved[k],catPending[k],editable,selMonth,selYear));});
-  app.appendChild(mg);
+  var mg=el("div",{className:"budget-grid-4"});MCF_KEYS.forEach(function(k){mg.appendChild(budgetCard(k,budgets[k],ca[k],cp[k],ed,selMonth,selYear));});app.appendChild(mg);
   app.appendChild(el("hr",{className:"divider"}));
+
   if(role==="purchase"){
-    app.appendChild(el("div",{style:{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:"12px"}},el("div",{style:{fontSize:"13px",fontWeight:"500",color:"#888"}},"Purchase Manager \u00B7 "+selMonth+" "+selYear),el("button",{className:"btn",onClick:function(){setState({showForm:!showForm});}},icon("plus")," New request")));
+    app.appendChild(el("div",{style:{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:"12px"}},
+      el("div",{style:{fontSize:"13px",fontWeight:"500",color:"#888"}},"Purchase Manager \u00B7 "+selMonth+" "+selYear),
+      el("button",{className:"btn",onClick:function(){setState({showForm:!showForm});}},icon("plus")," New request")
+    ));
     if(showForm){
-      var fcard=el("div",{className:"card"});
-      fcard.appendChild(el("div",{style:{fontSize:"14px",fontWeight:"500",marginBottom:"12px"}},"New purchase request"));
+      var fc=el("div",{style:{background:"#fff",border:"0.5px solid #ddd",borderRadius:"12px",padding:"1rem 1.25rem",marginBottom:"1rem"}});
+      fc.appendChild(el("div",{style:{fontSize:"14px",fontWeight:"500",marginBottom:"12px"}},"New purchase request"));
       var g1=el("div",{className:"form-grid2"});
       var vi=el("input",{type:"text",placeholder:"Vendor name"});vi.value=form.vendor;vi.addEventListener("input",function(e){state.form.vendor=e.target.value;});
-      var ai=el("input",{type:"number",placeholder:"Amount (\u20B9)"});ai.value=form.amount;ai.addEventListener("input",function(e){state.form.amount=e.target.value;});
-      g1.appendChild(vi);g1.appendChild(ai);fcard.appendChild(g1);
+      var ai=el("input",{type:"number",placeholder:"Amount"});ai.value=form.amount;ai.addEventListener("input",function(e){state.form.amount=e.target.value;});
+      g1.appendChild(vi);g1.appendChild(ai);fc.appendChild(g1);
       var g2=el("div",{className:"form-grid2"});
-      var catSel=el("select",{});
-      ALL_KEYS.forEach(function(k){var o=el("option",{value:k},k);if(k===form.category)o.selected=true;catSel.appendChild(o);});
-      catSel.addEventListener("change",function(e){state.form.category=e.target.value;});
+      var cs=el("select",{});ALL_KEYS.forEach(function(k){var o=el("option",{value:k},k);if(k===form.category)o.selected=true;cs.appendChild(o);});cs.addEventListener("change",function(e){state.form.category=e.target.value;});
       var di=el("input",{type:"date"});di.value=form.date;di.addEventListener("change",function(e){state.form.date=e.target.value;});
-      g2.appendChild(catSel);g2.appendChild(di);fcard.appendChild(g2);
-      var ni=el("input",{type:"text",placeholder:"Note / purpose (optional)",className:"form-full"});ni.value=form.note;ni.addEventListener("input",function(e){state.form.note=e.target.value;});
-      fcard.appendChild(ni);
+      g2.appendChild(cs);g2.appendChild(di);fc.appendChild(g2);
+      var ni=el("input",{type:"text",placeholder:"Note / purpose (optional)",className:"form-full"});ni.value=form.note;ni.addEventListener("input",function(e){state.form.note=e.target.value;});fc.appendChild(ni);
       var fa=el("div",{className:"form-actions"});
       fa.appendChild(el("button",{className:"btn",onClick:addEntry},"Submit request"));
       fa.appendChild(el("button",{className:"btn-ghost",onClick:function(){setState({showForm:false});}},"Cancel"));
-      fcard.appendChild(fa);app.appendChild(fcard);
+      fc.appendChild(fa);app.appendChild(fc);
     }
     app.appendChild(el("div",{style:{fontSize:"13px",fontWeight:"500",marginBottom:"10px",color:"#888"}},"Requests for "+selMonth+" "+selYear));
   }
-  if(role==="accounts"){app.appendChild(el("div",{style:{fontSize:"13px",fontWeight:"500",marginBottom:"10px",color:"#888"}},"Accounts \u00B7 "+selMonth+" "+selYear+(pendingCount>0?" \u00B7 "+pendingCount+" pending":"")));}
+  if(role==="accounts"){app.appendChild(el("div",{style:{fontSize:"13px",fontWeight:"500",marginBottom:"10px",color:"#888"}},"Accounts \u00B7 "+selMonth+" "+selYear+(pc>0?" \u00B7 "+pc+" pending":"")));}
+
   var sp=el("div",{className:"pills"});
-  ["All","Pending","Approved","Rejected"].forEach(function(s){var active=filterStatus===s,sv=s;var p=el("button",{className:"pill",style:{borderColor:active?"#7F77DD":"#ddd",background:active?"#EEEDFE":"transparent",color:active?"#3C3489":"#888"},onClick:function(){setState({filterStatus:sv});}},s);if(s==="Pending"&&pendingCount>0)p.appendChild(el("span",{className:"pending-count",style:{marginLeft:"4px"}},String(pendingCount)));sp.appendChild(p);});
+  ["All","Pending","Approved","Rejected"].forEach(function(s){
+    var act=filterStatus===s,sv=s;
+    var p=el("button",{className:"pill",style:{borderColor:act?"#7F77DD":"#ddd",background:act?"#EEEDFE":"transparent",color:act?"#3C3489":"#888"},onClick:function(){setState({filterStatus:sv});}},s);
+    if(s==="Pending"&&pc>0)p.appendChild(el("span",{className:"pending-count",style:{marginLeft:"4px"}},String(pc)));
+    sp.appendChild(p);
+  });
   app.appendChild(sp);
-  var cp=el("div",{className:"pills"});
-  ["All"].concat(ALL_KEYS).forEach(function(k){var active=filterCat===k,kv=k,col=CAT_COLOR[k]||{};cp.appendChild(el("button",{className:"pill",style:{borderColor:active?(col.stroke||"#aaa"):"#ddd",background:active?(col.fill||"#eee"):"transparent",color:active?(col.text||"#333"):"#888"},onClick:function(){setState({filterCat:kv});}},k));});
-  app.appendChild(cp);
-  renderEntries(listEntries,role,rejectingId,app,catApproved,budgets);
+  var cpills=el("div",{className:"pills"});
+  ["All"].concat(ALL_KEYS).forEach(function(k){var act=filterCat===k,kv=k,col=CAT_COLOR[k]||{};cpills.appendChild(el("button",{className:"pill",style:{borderColor:act?(col.stroke||"#aaa"):"#ddd",background:act?(col.fill||"#eee"):"transparent",color:act?(col.text||"#333"):"#888"},onClick:function(){setState({filterCat:kv});}},k));});
+  app.appendChild(cpills);
+  renderEntries(le,role,rejectingId,app,ca,budgets);
 }
+
 function renderSummary(app) {
-  var data=state.data, allEntries=data.entries||{}, mkeySet={};
-  Object.keys(data.budgets||{}).forEach(function(k){mkeySet[k]=true;});
-  allEntries.forEach(function(e){if(e.monthKey)mkeySet[e.monthKey]=true;});
-  var mkeys=Object.keys(mkeySet).sort(function(a,b){var ap=a.split("-"),bp=b.split("-"),am=MONTHS.indexOf(ap[0]),bm=MONTHS.indexOf(bp[0]),ay=parseInt(ap[1]),by=parseInt(bp[1]),fas=am>=0&&am<=8?am:am-12,fbs=bm>=0&&bm<=8?bm:bm-12;if(ay!==by)return ay-by;return fas-fbs;});
-  if(mkeys.length===0){app.appendChild(el("div",{className:"empty"},"No monthly data yet."));return;}
-  var sections=[{title:"Fabric",keys:FABRIC_KEYS},{title:"Other Categories",keys:OTHER_KEYS},{title:"MCF",keys:MCF_KEYS}];
-  sections.forEach(function(sec){
+  var data=state.data,ae=data.entries||[],ms={};
+  Object.keys(data.budgets||{}).forEach(function(k){ms[k]=true;});
+  ae.forEach(function(e){ ms[getEntryMonthKey(e)]=true; });
+  var mks=Object.keys(ms).sort(function(a,b){var ap=a.split("-"),bp=b.split("-"),am=MONTHS.indexOf(ap[0]),bm=MONTHS.indexOf(bp[0]),ay=parseInt(ap[1]),by=parseInt(bp[1]),fa=am>=0&&am<=8?am:am-12,fb=bm>=0&&bm<=8?bm:bm-12;if(ay!==by)return ay-by;return fa-fb;});
+  if(mks.length===0){app.appendChild(el("div",{className:"empty"},"No monthly data yet."));return;}
+  [{title:"Fabric",keys:FABRIC_KEYS},{title:"Other Categories",keys:OTHER_KEYS},{title:"MCF",keys:MCF_KEYS}].forEach(function(sec){
     app.appendChild(el("div",{className:"summary-section-title"},sec.title));
-    var wrap=el("div",{className:"summary-wrap"}),table=el("table",{className:"summary-table"}),thead=el("tr",{});
-    thead.appendChild(el("th",{},"Month"));
-    sec.keys.forEach(function(k){thead.appendChild(el("th",{},k));});
-    thead.appendChild(el("th",{},"Total"));
-    table.appendChild(el("thead",{},thead));
+    var wrap=el("div",{className:"summary-wrap"}),tbl=el("table",{className:"summary-table"}),th=el("tr",{});
+    th.appendChild(el("th",{},"Month"));sec.keys.forEach(function(k){th.appendChild(el("th",{},k));});th.appendChild(el("th",{},"Total"));tbl.appendChild(el("thead",{},th));
     var tbody=el("tbody",{});
-    mkeys.forEach(function(mk){
-      var parts=mk.split("-"),mName=parts[0],mYear=parts[1],budgets=data.budgets[mk]||{},tr=el("tr",{});
-      tr.appendChild(el("td",{className:"month-cell"},mName+" "+mYear));
-      var rowBudget=0,rowApproved=0;
+    mks.forEach(function(mk){
+      var pts=mk.split("-"),mn=pts[0],my=pts[1],bd=data.budgets[mk]||{},tr=el("tr",{});
+      tr.appendChild(el("td",{className:"month-cell"},mn+" "+my));
+      var rb=0,ra=0;
       sec.keys.forEach(function(k){
-        var b=Number(budgets[k]||0),approved=allEntries.filter(function(e){return e.monthKey===mk&&e.category===k&&e.status==="approved";}).reduce(function(s,e){return s+Number(e.amount);},0);
-        rowBudget+=b;rowApproved+=approved;
-        var rem=b-approved,td=el("td",{});
-        if(b>0){td.appendChild(el("div",{className:"num"},fmt(b)));td.appendChild(el("div",{className:"num",style:{color:"#888"}},"Appr: "+fmt(approved)));td.appendChild(el("div",{className:"num "+(rem<0?"over":"ok")},(rem<0?"\u25BC ":"\u25B2 ")+fmt(Math.abs(rem))));}
+        var b=Number(bd[k]||0),ap=ae.filter(function(e){return getEntryMonthKey(e)===mk&&e.category===k&&e.status==="approved";}).reduce(function(s,e){return s+Number(e.amount);},0);
+        rb+=b;ra+=ap;var rem=b-ap,td=el("td",{});
+        if(b>0){td.appendChild(el("div",{className:"num"},fmt(b)));td.appendChild(el("div",{className:"num",style:{color:"#888"}},"Appr: "+fmt(ap)));td.appendChild(el("div",{className:"num "+(rem<0?"over":"ok")},(rem<0?"\u25BC ":"\u25B2 ")+fmt(Math.abs(rem))));}
         else{td.appendChild(el("div",{style:{color:"#ccc",fontSize:"11px"}},"\u2014"));}
         tr.appendChild(td);
       });
-      var totalTd=el("td",{});
-      if(rowBudget>0){totalTd.appendChild(el("div",{className:"num",style:{fontWeight:"600"}},fmt(rowBudget)));totalTd.appendChild(el("div",{className:"num",style:{color:"#888"}},"Appr: "+fmt(rowApproved)));var trem=rowBudget-rowApproved;totalTd.appendChild(el("div",{className:"num "+(trem<0?"over":"ok")},(trem<0?"\u25BC ":"\u25B2 ")+fmt(Math.abs(trem))));}
-      tr.appendChild(totalTd);tbody.appendChild(tr);
+      var tt=el("td",{});
+      if(rb>0){tt.appendChild(el("div",{className:"num",style:{fontWeight:"600"}},fmt(rb)));tt.appendChild(el("div",{className:"num",style:{color:"#888"}},"Appr: "+fmt(ra)));var tr2=rb-ra;tt.appendChild(el("div",{className:"num "+(tr2<0?"over":"ok")},(tr2<0?"\u25BC ":"\u25B2 ")+fmt(Math.abs(tr2))));}
+      tr.appendChild(tt);tbody.appendChild(tr);
     });
-    table.appendChild(tbody);wrap.appendChild(table);app.appendChild(wrap);
+    tbl.appendChild(tbody);wrap.appendChild(tbl);app.appendChild(wrap);
   });
 }
-function renderEntries(entries,role,rejectingId,app,catApproved,budgets){
+
+function renderEntries(entries,role,rejectingId,app,ca,budgets){
   if(entries.length===0){app.appendChild(el("div",{className:"empty"},"No entries to show."));return;}
-  entries.forEach(function(entry){
+  entries.forEach(function(e){
     var card=el("div",{className:"entry"}),left=el("div",{style:{flex:"1",minWidth:"0"}});
-    var nameRow=el("div",{style:{display:"flex",alignItems:"center",gap:"8px",marginBottom:"4px",flexWrap:"wrap"}});
-    nameRow.appendChild(el("span",{className:"entry-name"},entry.vendor));
-    var col=CAT_COLOR[entry.category]||{fill:"#eee",stroke:"#aaa",text:"#444"};
-    nameRow.appendChild(el("span",{className:"entry-badge",style:{background:col.fill,color:col.text,borderColor:col.stroke}},entry.category));
-    var st=entry.status||"pending";
-    nameRow.appendChild(el("span",{className:"entry-badge status-"+st},st.charAt(0).toUpperCase()+st.slice(1)));
-    left.appendChild(nameRow);
+    var nr=el("div",{style:{display:"flex",alignItems:"center",gap:"8px",marginBottom:"4px",flexWrap:"wrap"}});
+    nr.appendChild(el("span",{className:"entry-name"},e.vendor));
+    var col=CAT_COLOR[e.category]||{fill:"#eee",stroke:"#aaa",text:"#444"};
+    nr.appendChild(el("span",{className:"entry-badge",style:{background:col.fill,color:col.text,borderColor:col.stroke}},e.category));
+    var st=e.status||"pending";
+    nr.appendChild(el("span",{className:"entry-badge status-"+st},st.charAt(0).toUpperCase()+st.slice(1)));
+    left.appendChild(nr);
     var meta=el("div",{style:{display:"flex",gap:"12px",alignItems:"center",flexWrap:"wrap"}});
-    meta.appendChild(el("span",{className:"entry-amount"},fmt(entry.amount)));
-    var ds=el("span",{className:"entry-meta"});ds.appendChild(icon("calendar"));ds.appendChild(document.createTextNode(" "+entry.date));meta.appendChild(ds);
-    if(entry.note)meta.appendChild(el("span",{className:"entry-note"},entry.note));
+    meta.appendChild(el("span",{className:"entry-amount"},fmt(e.amount)));
+    var ds=el("span",{className:"entry-meta"});ds.appendChild(icon("calendar"));ds.appendChild(document.createTextNode(" "+e.date));meta.appendChild(ds);
+    if(e.note)meta.appendChild(el("span",{className:"entry-note"},e.note));
     left.appendChild(meta);
-    if(role==="accounts"&&st==="pending"){var budget=Number(budgets[entry.category]||0),af=catApproved[entry.category]||0,after=af+Number(entry.amount);if(budget>0){var exceed=after>budget;left.appendChild(el("div",{style:{fontSize:"11px",marginTop:"4px",color:exceed?"#A32D2D":"#0F6E56"}},exceed?"Approving will exceed "+entry.category+" budget by "+fmt(after-budget):"Within budget \u2014 "+fmt(budget-after)+" remaining"));}}
-    card.appendChild(left);
-    if(st==="rejected"&&entry.rejectReason)card.appendChild(el("div",{className:"entry-reason"},"Rejected: "+entry.rejectReason));
     if(role==="accounts"&&st==="pending"){
-      if(rejectingId===entry.id){
-        var rf=el("div",{className:"reject-form"});rf.appendChild(el("div",{style:{fontSize:"12px",color:"#888",marginBottom:"6px"}},"Reason for rejection:"));
-        var rta=el("textarea",{placeholder:"e.g. Budget exceeded..."});rta.value=state.rejectReason;rta.addEventListener("input",function(ev){state.rejectReason=ev.target.value;});rf.appendChild(rta);
-        var racts=el("div",{className:"form-actions",style:{marginTop:"8px"}}),eid=entry.id;
-        racts.appendChild(el("button",{className:"btn btn-red",onClick:function(){confirmReject(eid);}},"Confirm rejection"));
-        racts.appendChild(el("button",{className:"btn-ghost",onClick:function(){setState({rejectingId:null,rejectReason:""});}},"Cancel"));
-        rf.appendChild(racts);card.appendChild(rf);
-      } else {
-        var acts=el("div",{className:"entry-actions"}),eid2=entry.id;
-        acts.appendChild(el("button",{className:"btn btn-green",onClick:function(){approveEntry(eid2);}},icon("check")," Approve"));
-        acts.appendChild(el("button",{className:"btn btn-red",onClick:function(){setState({rejectingId:eid2,rejectReason:""});}},icon("x")," Reject"));
-        card.appendChild(acts);
+      var b=Number(budgets[e.category]||0),af=ca[e.category]||0,aft=af+Number(e.amount);
+      if(b>0){var ex=aft>b;left.appendChild(el("div",{style:{fontSize:"11px",marginTop:"4px",color:ex?"#A32D2D":"#0F6E56"}},ex?"Approving will exceed "+e.category+" budget by "+fmt(aft-b):"Within budget \u2014 "+fmt(b-aft)+" remaining"));}
+    }
+    card.appendChild(left);
+    if(st==="rejected"&&e.rejectReason)card.appendChild(el("div",{className:"entry-reason"},"Rejected: "+e.rejectReason));
+
+    // Action buttons — Accounts only
+    if(role==="accounts"){
+      if(st==="pending"){
+        if(rejectingId===e.id){
+          var rf=el("div",{className:"reject-form"});
+          rf.appendChild(el("div",{style:{fontSize:"12px",color:"#888",marginBottom:"6px"}},"Reason for rejection:"));
+          var rta=el("textarea",{placeholder:"e.g. Budget exceeded..."});rta.value=state.rejectReason;
+          rta.addEventListener("input",function(ev){state.rejectReason=ev.target.value;});rf.appendChild(rta);
+          var ra=el("div",{className:"form-actions",style:{marginTop:"8px"}}),eid=e.id;
+          ra.appendChild(el("button",{className:"btn btn-red",onClick:function(){confirmReject(eid);}},"Confirm rejection"));
+          ra.appendChild(el("button",{className:"btn-ghost",onClick:function(){setState({rejectingId:null,rejectReason:""}); }},"Cancel"));
+          rf.appendChild(ra);card.appendChild(rf);
+        } else {
+          var acts=el("div",{className:"entry-actions"}),eid2=e.id;
+          acts.appendChild(el("button",{className:"btn btn-green",onClick:function(){approveEntry(eid2);}},icon("check")," Approve"));
+          acts.appendChild(el("button",{className:"btn btn-red",onClick:function(){setState({rejectingId:eid2,rejectReason:""});}},icon("x")," Reject"));
+          card.appendChild(acts);
+        }
+      } else if(st==="approved"){
+        // Undo approval
+        var ua=el("div",{className:"entry-actions"}),eid3=e.id;
+        ua.appendChild(el("button",{className:"btn btn-amber",onClick:function(){if(confirm("Move this back to Pending?"))undoStatus(eid3);}},icon("arrow-back-up")," Undo Approval"));
+        card.appendChild(ua);
+      } else if(st==="rejected"){
+        // Undo rejection
+        var ur=el("div",{className:"entry-actions"}),eid4=e.id;
+        ur.appendChild(el("button",{className:"btn btn-amber",onClick:function(){if(confirm("Move this back to Pending?"))undoStatus(eid4);}},icon("arrow-back-up")," Undo Rejection"));
+        card.appendChild(ur);
       }
     }
     app.appendChild(card);
   });
 }
+
 function saveBudget(key,month,year){var b=parseFloat(state.budgetInput);if(isNaN(b)||b<0){setState({editingBudget:null});return;}setState({syncing:true});api({action:"setBudget",cat:key,amount:b,month:month,year:year},function(err){if(err){setState({syncing:false,syncOk:false,error:err.message});return;}loadData();setState({syncing:false,syncOk:true,editingBudget:null});});}
-function carryForward(){var selMonth=state.selMonth,selYear=state.selYear,prev=getPrevMonthBudgets(selMonth,selYear);setState({syncing:true});api({action:"carryForward",month:selMonth,year:selYear,budgets:prev},function(err){if(err){setState({syncing:false,syncOk:false,error:err.message});return;}loadData();setState({syncing:false,syncOk:true});});}
-function addEntry(){var form=state.form,mkey=monthKey(state.selMonth,state.selYear);if(!form.vendor.trim()||!form.amount||isNaN(parseFloat(form.amount)))return;var entry={id:Date.now(),vendor:form.vendor,category:form.category,amount:parseFloat(form.amount),date:form.date,note:form.note||"",status:"pending",rejectReason:"",monthKey:mkey};setState({syncing:true,showForm:false,form:{vendor:"",category:"Period Panties",amount:"",date:today(),note:""}});api({action:"addEntry",entry:entry},function(err){if(err){setState({syncing:false,syncOk:false,error:err.message});return;}loadData();setState({syncing:false,syncOk:true});});}
+function carryForward(){var sm=state.selMonth,sy=state.selYear,prev=getPrevMonthBudgets(sm,sy);setState({syncing:true});api({action:"carryForward",month:sm,year:sy,budgets:prev},function(err){if(err){setState({syncing:false,syncOk:false,error:err.message});return;}loadData();setState({syncing:false,syncOk:true});});}
+function addEntry(){var form=state.form,mk=monthKey(state.selMonth,state.selYear);if(!form.vendor.trim()||!form.amount||isNaN(parseFloat(form.amount)))return;var entry={id:Date.now(),vendor:form.vendor,category:form.category,amount:parseFloat(form.amount),date:form.date,note:form.note||"",status:"pending",rejectReason:"",monthKey:mk};setState({syncing:true,showForm:false,form:{vendor:"",category:"Period Panties",amount:"",date:today(),note:""}});api({action:"addEntry",entry:entry},function(err){if(err){setState({syncing:false,syncOk:false,error:err.message});return;}loadData();setState({syncing:false,syncOk:true});});}
 function approveEntry(id){setState({syncing:true});api({action:"updateStatus",id:id,status:"approved",rejectReason:""},function(err){if(err){setState({syncing:false,syncOk:false,error:err.message});return;}loadData();setState({syncing:false,syncOk:true});});}
-function confirmReject(id){var reason=state.rejectReason.trim();if(!reason){alert("Please enter a reason for rejection.");return;}setState({syncing:true,rejectingId:null,rejectReason:""});api({action:"updateStatus",id:id,status:"rejected",rejectReason:reason},function(err){if(err){setState({syncing:false,syncOk:false,error:err.message});return;}loadData();setState({syncing:false,syncOk:true});});}
+function confirmReject(id){var r=state.rejectReason.trim();if(!r){alert("Please enter a reason.");return;}setState({syncing:true,rejectingId:null,rejectReason:""});api({action:"updateStatus",id:id,status:"rejected",rejectReason:r},function(err){if(err){setState({syncing:false,syncOk:false,error:err.message});return;}loadData();setState({syncing:false,syncOk:true});});}
+function undoStatus(id){setState({syncing:true});api({action:"updateStatus",id:id,status:"pending",rejectReason:""},function(err){if(err){setState({syncing:false,syncOk:false,error:err.message});return;}loadData();setState({syncing:false,syncOk:true});});}
 render();
 </script>
 </body>
