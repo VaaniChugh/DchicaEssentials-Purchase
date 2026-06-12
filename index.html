@@ -40,7 +40,6 @@
   .pill { display: inline-flex; padding: 4px 12px; border-radius: 99px; font-size: 12px; font-weight: 500; cursor: pointer; border: 0.5px solid #ddd; background: transparent; color: #888; font-family: inherit; }
   .pills { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 12px; }
   .entry { background: #fff; border: 0.5px solid #ddd; border-radius: 10px; padding: 12px 14px; margin-bottom: 8px; }
-  .entry-top { display: flex; align-items: flex-start; gap: 10px; }
   .entry-name { font-size: 14px; font-weight: 500; }
   .entry-amount { font-size: 15px; font-weight: 500; }
   .entry-meta { font-size: 12px; color: #888; }
@@ -81,21 +80,19 @@ var CAT_COLOR = {
   Packaging: { fill: "#E1F5EE", stroke: "#1D9E75", text: "#085041" },
   Trims:     { fill: "#FAEEDA", stroke: "#BA7517", text: "#633806" }
 };
-var fmt = function(n) { return "₹" + Number(n).toLocaleString("en-IN", { maximumFractionDigits: 0 }); };
+var fmt = function(n) { return "\u20B9" + Number(n).toLocaleString("en-IN", { maximumFractionDigits: 0 }); };
 var pct = function(a, b) { return b > 0 ? Math.min(100, Math.round((a / b) * 100)) : 0; };
 var today = function() { return new Date().toISOString().slice(0, 10); };
 
 var state = {
   data: { budgets: { Fabric: 0, Packaging: 0, Trims: 0 }, entries: [] },
   loading: false, syncing: false, syncOk: null, error: null,
-  role: "purchase",
-  showForm: false, filterStatus: "All",
+  role: "purchase", showForm: false, filterStatus: "All",
   form: { vendor: "", category: "Fabric", amount: "", date: today(), note: "" },
-  rejectingId: null, rejectReason: "",
-  scriptUrlInput: ""
+  rejectingId: null, rejectReason: "", scriptUrlInput: ""
 };
 
-function setState(patch) { for (var k in patch) state[k] = patch[k]; render(); }
+function setState(patch) { for (var k in patch) { state[k] = patch[k]; } render(); }
 
 function api(payload, cb) {
   fetch(SCRIPT_URL, { method: "POST", body: JSON.stringify(payload) })
@@ -116,14 +113,254 @@ function loadData() {
 function el(tag, attrs) {
   var e = document.createElement(tag);
   var children = Array.prototype.slice.call(arguments, 2);
-  if (attrs) Object.keys(attrs).forEach(function(k) {
-    var v = attrs[k];
-    if (k === "style" && typeof v === "object") Object.assign(e.style, v);
-    else if (k.indexOf("on") === 0) e.addEventListener(k.slice(2).toLowerCase(), v);
-    else if (k === "className") e.className = v;
-    else e.setAttribute(k, v);
-  });
+  if (attrs) {
+    Object.keys(attrs).forEach(function(k) {
+      var v = attrs[k];
+      if (k === "style" && typeof v === "object") { Object.assign(e.style, v); }
+      else if (k.indexOf("on") === 0) { e.addEventListener(k.slice(2).toLowerCase(), v); }
+      else if (k === "className") { e.className = v; }
+      else { e.setAttribute(k, v); }
+    });
+  }
   children.forEach(function(c) {
     if (c == null) return;
-    if (Array.isArray(c)) c.forEach(function(x) { if (x != null) e.appendChild(typeof x === "string" ? document.createTextNode(x) : x); });
-    else e.appendChild(typeof c === "string" ? document.createTextNode(c) 
+    if (Array.isArray(c)) { c.forEach(function(x) { if (x != null) e.appendChild(typeof x === "string" ? document.createTextNode(x) : x); }); }
+    else { e.appendChild(typeof c === "string" ? document.createTextNode(c) : c); }
+  });
+  return e;
+}
+
+function icon(name) { var i = document.createElement("i"); i.className = "ti ti-" + name; return i; }
+
+function progressBar(value, max, color) {
+  var p = pct(value, max);
+  return el("div", { className: "progress-track" },
+    el("div", { className: "progress-bar", style: { width: p + "%", background: p >= 90 ? "#E24B4A" : color } })
+  );
+}
+
+function render() {
+  var data = state.data, loading = state.loading, syncing = state.syncing,
+      syncOk = state.syncOk, error = state.error, role = state.role,
+      showForm = state.showForm, filterStatus = state.filterStatus,
+      form = state.form, rejectingId = state.rejectingId;
+
+  var approved = data.entries.filter(function(e) { return e.status === "approved"; });
+  var pending = data.entries.filter(function(e) { return e.status === "pending"; });
+  var catApproved = {}, catPending = {};
+  CATS.forEach(function(c) {
+    catApproved[c] = approved.filter(function(e) { return e.category === c; }).reduce(function(s, e) { return s + Number(e.amount); }, 0);
+    catPending[c] = pending.filter(function(e) { return e.category === c; }).reduce(function(s, e) { return s + Number(e.amount); }, 0);
+  });
+  var grandBudget = CATS.reduce(function(s, c) { return s + Number(data.budgets[c] || 0); }, 0);
+  var grandApproved = CATS.reduce(function(s, c) { return s + catApproved[c]; }, 0);
+  var pendingCount = pending.length;
+  var listEntries = data.entries.filter(function(e) {
+    if (filterStatus === "All") return true;
+    return e.status === filterStatus.toLowerCase();
+  });
+
+  var app = document.getElementById("app");
+  app.innerHTML = "";
+
+  // Setup banner
+  if (!SCRIPT_URL) {
+    var banner = el("div", { className: "setup-banner" },
+      el("strong", {}, "One-time setup — connect to Google Sheets"),
+      "Paste your Google Apps Script Web App URL below."
+    );
+    var row = el("div", { className: "setup-inp-row" });
+    var sinp = el("input", { type: "text", placeholder: "https://script.google.com/macros/s/..." });
+    sinp.value = state.scriptUrlInput;
+    sinp.addEventListener("input", function(ev) { state.scriptUrlInput = ev.target.value; });
+    var saveBtn = el("button", { className: "btn", onClick: function() {
+      var url = state.scriptUrlInput.trim();
+      if (!url || url.indexOf("https://script.google.com") !== 0) { alert("Please paste a valid Apps Script URL."); return; }
+      SCRIPT_URL = url; loadData();
+    }}, "Connect");
+    row.appendChild(sinp); row.appendChild(saveBtn);
+    banner.appendChild(row); app.appendChild(banner);
+    return;
+  }
+
+  // Header
+  app.appendChild(el("div", { className: "header-row" },
+    el("div", {},
+      el("div", { className: "page-title" }, "Production budget"),
+      el("div", { className: "page-sub" }, grandBudget > 0
+        ? "Total " + fmt(grandBudget) + " \u00B7 Approved " + fmt(grandApproved) + " \u00B7 " + pct(grandApproved, grandBudget) + "% used"
+        : "Budgets not set")
+    ),
+    el("div", { style: { display: "flex", gap: "8px", alignItems: "center" } },
+      el("button", { className: "btn-ghost", onClick: loadData }, icon("refresh")),
+      el("button", { className: "btn-ghost", style: { fontSize: "11px" }, onClick: function() { SCRIPT_URL = ""; setState({ scriptUrlInput: "", syncOk: null }); } }, "Change URL")
+    )
+  ));
+
+  // Sync bar
+  var dotClass = "dot" + (syncing ? " spin" : syncOk === true ? " green" : syncOk === false ? " red" : "");
+  var syncLabel = syncing ? "Syncing..." : syncOk === true ? "Synced with Google Sheets" : syncOk === false ? ("Error: " + (error || "check URL")) : "Connecting...";
+  app.appendChild(el("div", { className: "sync-bar" }, el("span", { className: dotClass }), syncLabel));
+
+  if (loading) { app.appendChild(el("div", { className: "loading" }, "Loading...")); return; }
+
+  // Role switcher
+  var rs = el("div", { className: "role-switcher" });
+  var pbtn = el("button", { className: "role-btn" + (role === "purchase" ? " active" : ""), onClick: function() { setState({ role: "purchase", showForm: false }); } }, "Purchase Manager");
+  var abtn = el("button", { className: "role-btn" + (role === "accounts" ? " active" : ""), onClick: function() { setState({ role: "accounts", showForm: false, filterStatus: "All" }); } }, "Accounts");
+  if (pendingCount > 0) abtn.appendChild(el("span", { className: "pending-count" }, String(pendingCount)));
+  rs.appendChild(pbtn); rs.appendChild(abtn);
+  app.appendChild(rs);
+
+  // Budget cards
+  var grid = el("div", { className: "cat-budget-grid" });
+  CATS.forEach(function(c) {
+    var col = CAT_COLOR[c], budget = Number(data.budgets[c] || 0), spent = catApproved[c], pend = catPending[c], rem = budget - spent;
+    var card = el("div", { className: "cat-budget-card", style: { borderColor: col.stroke } });
+    card.appendChild(el("div", { className: "cb-label", style: { color: col.text } }, c));
+    card.appendChild(el("div", { style: { display: "flex", alignItems: "baseline", gap: "6px" } }, el("span", { className: "cb-num" }, budget > 0 ? fmt(budget) : "\u2014")));
+    if (budget > 0) {
+      card.appendChild(el("div", { className: "cb-spent" }, "Approved: " + fmt(spent)));
+      if (pend > 0) card.appendChild(el("div", { className: "cb-pending" }, "Pending: " + fmt(pend)));
+      card.appendChild(el("div", { className: "cb-remaining", style: { color: rem < 0 ? "#A32D2D" : col.text } }, rem < 0 ? "Over by " + fmt(Math.abs(rem)) : "Left: " + fmt(rem)));
+      card.appendChild(progressBar(spent, budget, col.stroke));
+    } else {
+      card.appendChild(el("div", { className: "cb-spent" }, "No budget set"));
+    }
+    grid.appendChild(card);
+  });
+  app.appendChild(grid);
+
+  // Purchase Manager view
+  if (role === "purchase") {
+    app.appendChild(el("div", { style: { display: "flex", justifyContent: "flex-end", marginBottom: "12px" } },
+      el("button", { className: "btn", onClick: function() { setState({ showForm: !showForm }); } }, icon("plus"), " New request")
+    ));
+    if (showForm) {
+      var fcard = el("div", { className: "card" });
+      fcard.appendChild(el("div", { style: { fontSize: "14px", fontWeight: "500", marginBottom: "12px" } }, "New purchase request"));
+      var g1 = el("div", { className: "form-grid2" });
+      var vi = el("input", { type: "text", placeholder: "Vendor name" }); vi.value = form.vendor;
+      vi.addEventListener("input", function(e) { state.form.vendor = e.target.value; });
+      var ai = el("input", { type: "number", placeholder: "Amount" }); ai.value = form.amount;
+      ai.addEventListener("input", function(e) { state.form.amount = e.target.value; });
+      g1.appendChild(vi); g1.appendChild(ai); fcard.appendChild(g1);
+      var g2 = el("div", { className: "form-grid2" });
+      var cs = el("select", {});
+      CATS.forEach(function(c) { var o = el("option", { value: c }, c); if (c === form.category) o.selected = true; cs.appendChild(o); });
+      cs.addEventListener("change", function(e) { state.form.category = e.target.value; });
+      var di = el("input", { type: "date" }); di.value = form.date;
+      di.addEventListener("change", function(e) { state.form.date = e.target.value; });
+      g2.appendChild(cs); g2.appendChild(di); fcard.appendChild(g2);
+      var ni = el("input", { type: "text", placeholder: "Note / purpose (optional)", className: "form-full" }); ni.value = form.note;
+      ni.addEventListener("input", function(e) { state.form.note = e.target.value; });
+      fcard.appendChild(ni);
+      var fa = el("div", { className: "form-actions" });
+      fa.appendChild(el("button", { className: "btn", onClick: addEntry }, "Submit request"));
+      fa.appendChild(el("button", { className: "btn-ghost", onClick: function() { setState({ showForm: false }); } }, "Cancel"));
+      fcard.appendChild(fa);
+      app.appendChild(fcard);
+    }
+    app.appendChild(el("hr", { className: "divider" }));
+    app.appendChild(el("div", { style: { fontSize: "13px", fontWeight: "500", marginBottom: "10px", color: "#888" } }, "Your requests"));
+    renderEntries(listEntries, "purchase", rejectingId, app, catApproved, data.budgets);
+  }
+
+  // Accounts view
+  if (role === "accounts") {
+    var pills = el("div", { className: "pills" });
+    ["All", "Pending", "Approved", "Rejected"].forEach(function(s) {
+      var active = filterStatus === s, sv = s;
+      var p = el("button", { className: "pill", style: { borderColor: active ? "#7F77DD" : "#ddd", background: active ? "#EEEDFE" : "transparent", color: active ? "#3C3489" : "#888" }, onClick: function() { setState({ filterStatus: sv }); } }, s);
+      if (s === "Pending" && pendingCount > 0) p.appendChild(el("span", { className: "pending-count", style: { marginLeft: "4px" } }, String(pendingCount)));
+      pills.appendChild(p);
+    });
+    app.appendChild(pills);
+    renderEntries(listEntries, "accounts", rejectingId, app, catApproved, data.budgets);
+  }
+}
+
+function renderEntries(entries, role, rejectingId, app, catApproved, budgets) {
+  if (entries.length === 0) { app.appendChild(el("div", { className: "empty" }, "No entries to show.")); return; }
+  entries.forEach(function(entry) {
+    var card = el("div", { className: "entry" });
+    var left = el("div", { style: { flex: "1", minWidth: "0" } });
+    var nameRow = el("div", { style: { display: "flex", alignItems: "center", gap: "8px", marginBottom: "4px", flexWrap: "wrap" } });
+    nameRow.appendChild(el("span", { className: "entry-name" }, entry.vendor));
+    nameRow.appendChild(el("span", { className: "entry-badge", style: { background: CAT_COLOR[entry.category].fill, color: CAT_COLOR[entry.category].text, borderColor: CAT_COLOR[entry.category].stroke } }, entry.category));
+    var st = entry.status || "pending";
+    nameRow.appendChild(el("span", { className: "entry-badge status-" + st }, st.charAt(0).toUpperCase() + st.slice(1)));
+    left.appendChild(nameRow);
+    var meta = el("div", { style: { display: "flex", gap: "12px", alignItems: "center", flexWrap: "wrap" } });
+    meta.appendChild(el("span", { className: "entry-amount" }, fmt(entry.amount)));
+    var ds = el("span", { className: "entry-meta" }); ds.appendChild(icon("calendar")); ds.appendChild(document.createTextNode(" " + entry.date));
+    meta.appendChild(ds);
+    if (entry.note) meta.appendChild(el("span", { className: "entry-note" }, entry.note));
+    left.appendChild(meta);
+    if (role === "accounts" && st === "pending") {
+      var budget = Number(budgets[entry.category] || 0), approvedSoFar = catApproved[entry.category] || 0, after = approvedSoFar + Number(entry.amount);
+      if (budget > 0) {
+        var exceed = after > budget;
+        left.appendChild(el("div", { style: { fontSize: "11px", marginTop: "4px", color: exceed ? "#A32D2D" : "#0F6E56" } },
+          exceed ? "Approving this will exceed " + entry.category + " budget by " + fmt(after - budget) : "Within budget - " + fmt(budget - after) + " will remain after approval"
+        ));
+      }
+    }
+    card.appendChild(left);
+    if (st === "rejected" && entry.rejectReason) card.appendChild(el("div", { className: "entry-reason" }, "Rejected: " + entry.rejectReason));
+    if (role === "accounts" && st === "pending") {
+      if (rejectingId === entry.id) {
+        var rf = el("div", { className: "reject-form" });
+        rf.appendChild(el("div", { style: { fontSize: "12px", color: "#888", marginBottom: "6px" } }, "Reason for rejection:"));
+        var rta = el("textarea", { placeholder: "e.g. Budget exceeded, duplicate request..." }); rta.value = state.rejectReason;
+        rta.addEventListener("input", function(ev) { state.rejectReason = ev.target.value; });
+        rf.appendChild(rta);
+        var racts = el("div", { className: "form-actions", style: { marginTop: "8px" } });
+        var eid = entry.id;
+        racts.appendChild(el("button", { className: "btn btn-red", onClick: function() { confirmReject(eid); } }, "Confirm rejection"));
+        racts.appendChild(el("button", { className: "btn-ghost", onClick: function() { setState({ rejectingId: null, rejectReason: "" }); } }, "Cancel"));
+        rf.appendChild(racts); card.appendChild(rf);
+      } else {
+        var acts = el("div", { className: "entry-actions" }), eid2 = entry.id;
+        acts.appendChild(el("button", { className: "btn btn-green", onClick: function() { approveEntry(eid2); } }, icon("check"), " Approve"));
+        acts.appendChild(el("button", { className: "btn btn-red", onClick: function() { setState({ rejectingId: eid2, rejectReason: "" }); } }, icon("x"), " Reject"));
+        card.appendChild(acts);
+      }
+    }
+    app.appendChild(card);
+  });
+}
+
+function addEntry() {
+  var form = state.form;
+  if (!form.vendor.trim() || !form.amount || isNaN(parseFloat(form.amount))) return;
+  var entry = { id: Date.now(), vendor: form.vendor, category: form.category, amount: parseFloat(form.amount), date: form.date, note: form.note || "", status: "pending", rejectReason: "" };
+  setState({ syncing: true, showForm: false, form: { vendor: "", category: "Fabric", amount: "", date: today(), note: "" } });
+  api({ action: "addEntry", entry: entry }, function(err) {
+    if (err) { setState({ syncing: false, syncOk: false, error: err.message }); return; }
+    loadData(); setState({ syncing: false, syncOk: true });
+  });
+}
+
+function approveEntry(id) {
+  setState({ syncing: true });
+  api({ action: "updateStatus", id: id, status: "approved", rejectReason: "" }, function(err) {
+    if (err) { setState({ syncing: false, syncOk: false, error: err.message }); return; }
+    loadData(); setState({ syncing: false, syncOk: true });
+  });
+}
+
+function confirmReject(id) {
+  var reason = state.rejectReason.trim();
+  if (!reason) { alert("Please enter a reason for rejection."); return; }
+  setState({ syncing: true, rejectingId: null, rejectReason: "" });
+  api({ action: "updateStatus", id: id, status: "rejected", rejectReason: reason }, function(err) {
+    if (err) { setState({ syncing: false, syncOk: false, error: err.message }); return; }
+    loadData(); setState({ syncing: false, syncOk: true });
+  });
+}
+
+render();
+</script>
+</body>
+</html>
