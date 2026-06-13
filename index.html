@@ -47,7 +47,7 @@ textarea { width: 100%; resize: vertical; min-height: 60px; }
 .entry-reason { font-size: 12px; color: #A32D2D; margin-top: 6px; padding: 6px 10px; background: #FCEBEB; border-radius: 6px; }
 .entry-actions { display: flex; gap: 8px; margin-top: 10px; flex-wrap: wrap; }
 .reject-form { margin-top: 10px; padding-top: 10px; border-top: 0.5px solid #eee; }
-.status-pending  { background: #FFF8E6; color: #7A5500; border-color: #F0C040; }
+.status-pending { background: #FFF8E6; color: #7A5500; border-color: #F0C040; }
 .status-approved { background: #E1F5EE; color: #085041; border-color: #1D9E75; }
 .status-rejected { background: #FCEBEB; color: #A32D2D; border-color: #F09595; }
 .empty { text-align: center; padding: 2.5rem 0; color: #888; font-size: 14px; }
@@ -93,157 +93,129 @@ textarea { width: 100%; resize: vertical; min-height: 60px; }
 <script>
 var SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyDRV2V8Vogbtts7sYqSCPrGe-Z1BsezCWdFJQFG5lIbuo2VrY9Sei_U9jMoB9eUmRh/exec";
 var PASSWORDS = { purchase: "dchica123", accounts: "accounts456" };
-var FABRIC_KEYS = ["Period Panties", "Bras & Camis", "Others"];
-var OTHER_KEYS  = ["Packaging", "Trims", "Finished Product"];
-var MCF_KEYS    = ["MCF Period Panties", "MCF Bras & Camis", "MCF Finished Goods", "MCF Others"];
-var ALL_KEYS    = FABRIC_KEYS.concat(OTHER_KEYS).concat(MCF_KEYS);
+var FABRIC_KEYS = ["Period Panties","Bras & Camis","Others"];
+var OTHER_KEYS = ["Packaging","Trims","Finished Product"];
+var MCF_KEYS = ["MCF Period Panties","MCF Bras & Camis","MCF Finished Goods","MCF Others"];
+var ALL_KEYS = FABRIC_KEYS.concat(OTHER_KEYS).concat(MCF_KEYS);
 var CAT_COLOR = {
-  "Period Panties":     { fill: "#F5E6FF", stroke: "#9B59B6", text: "#5B2C6F" },
-  "Bras & Camis":       { fill: "#EEEDFE", stroke: "#7F77DD", text: "#3C3489" },
-  "Others":             { fill: "#F0F0F0", stroke: "#999",    text: "#444" },
-  "Packaging":          { fill: "#E1F5EE", stroke: "#1D9E75", text: "#085041" },
-  "Trims":              { fill: "#FAEEDA", stroke: "#BA7517", text: "#633806" },
-  "Finished Product":   { fill: "#FDE8F0", stroke: "#D4537E", text: "#7D1F45" },
-  "MCF Period Panties": { fill: "#FFF0E0", stroke: "#E67E22", text: "#784212" },
-  "MCF Bras & Camis":   { fill: "#E8F8FF", stroke: "#2E86C1", text: "#1A5276" },
-  "MCF Finished Goods": { fill: "#F0FFF0", stroke: "#27AE60", text: "#145A32" },
-  "MCF Others":         { fill: "#FFF5F5", stroke: "#E74C3C", text: "#922B21" }
+  "Period Panties":     {fill:"#F5E6FF",stroke:"#9B59B6",text:"#5B2C6F"},
+  "Bras & Camis":       {fill:"#EEEDFE",stroke:"#7F77DD",text:"#3C3489"},
+  "Others":             {fill:"#F0F0F0",stroke:"#999",text:"#444"},
+  "Packaging":          {fill:"#E1F5EE",stroke:"#1D9E75",text:"#085041"},
+  "Trims":              {fill:"#FAEEDA",stroke:"#BA7517",text:"#633806"},
+  "Finished Product":   {fill:"#FDE8F0",stroke:"#D4537E",text:"#7D1F45"},
+  "MCF Period Panties": {fill:"#FFF0E0",stroke:"#E67E22",text:"#784212"},
+  "MCF Bras & Camis":   {fill:"#E8F8FF",stroke:"#2E86C1",text:"#1A5276"},
+  "MCF Finished Goods": {fill:"#F0FFF0",stroke:"#27AE60",text:"#145A32"},
+  "MCF Others":         {fill:"#FFF5F5",stroke:"#E74C3C",text:"#922B21"}
 };
-
-// Standard calendar months — January=0 to December=11
 var CAL_MONTHS = ["January","February","March","April","May","June","July","August","September","October","November","December"];
-// Display order for selector (FY order Apr first)
-var MONTHS = ["April","May","June","July","August","September","October","November","December","January","February","March"];
-
-var fmt = function(n) { return "\u20B9" + Number(n).toLocaleString("en-IN", { maximumFractionDigits: 0 }); };
-var pct = function(a, b) { return b > 0 ? Math.min(100, Math.round((a / b) * 100)) : 0; };
-var today = function() { return new Date().toISOString().slice(0, 10); };
-
-function currentMonthYear() {
-  var d = new Date();
-  // Use standard JS getMonth() with CAL_MONTHS for correct mapping
-  return { month: CAL_MONTHS[d.getMonth()], year: d.getFullYear() };
+var fmt = function(n){return "\u20B9"+Number(n).toLocaleString("en-IN",{maximumFractionDigits:0});};
+var pct = function(a,b){return b>0?Math.min(100,Math.round((a/b)*100)):0;};
+var today = function(){return new Date().toISOString().slice(0,10);};
+function currentMonthYear(){var d=new Date();return {month:CAL_MONTHS[d.getMonth()],year:d.getFullYear()};}
+function getFY(month,year){var idx=CAL_MONTHS.indexOf(month);if(idx>=3)return "FY "+year+"-"+String(year+1).slice(2);else return "FY "+(year-1)+"-"+String(year).slice(2);}
+function monthKey(month,year){return month+"-"+year;}
+function getEntryMonthKey(entry){
+  if(entry.monthKey&&entry.monthKey.trim()!==""&&entry.monthKey!=="0")return entry.monthKey;
+  if(entry.date){var d=new Date(entry.date);if(!isNaN(d.getTime()))return CAL_MONTHS[d.getMonth()]+"-"+d.getFullYear();}
+  var c=currentMonthYear();return monthKey(c.month,c.year);
 }
-
-function getFY(month, year) {
-  var idx = CAL_MONTHS.indexOf(month);
-  // Apr(3)-Dec(11) => FY year/year+1; Jan(0)-Mar(2) => FY year-1/year
-  if (idx >= 3) return "FY " + year + "-" + String(year+1).slice(2);
-  else return "FY " + (year-1) + "-" + String(year).slice(2);
-}
-
-function monthKey(month, year) { return month + "-" + year; }
-
-function getEntryMonthKey(entry) {
-  if (entry.monthKey && entry.monthKey.trim() !== "" && entry.monthKey !== "0") return entry.monthKey;
-  if (entry.date) {
-    var d = new Date(entry.date);
-    if (!isNaN(d.getTime())) return CAL_MONTHS[d.getMonth()] + "-" + d.getFullYear();
-  }
-  var cur = currentMonthYear();
-  return monthKey(cur.month, cur.year);
-}
-
-var cur = currentMonthYear();
-var state = {
-  loggedIn: false, role: null, loginError: "", pwInput: "", roleInput: "purchase",
-  data: { budgets: {}, entries: [] },
-  loading: false, syncing: false, syncOk: null, error: null,
-  activeTab: "budget", showForm: false, filterStatus: "All", filterCat: "All",
-  form: { vendor: "", category: "Period Panties", amount: "", date: today(), note: "" },
-  rejectingId: null, rejectReason: "", editingBudget: null, budgetInput: "",
-  selMonth: cur.month, selYear: cur.year
+var cur=currentMonthYear();
+var state={
+  loggedIn:false,role:null,loginError:"",pwInput:"",roleInput:"purchase",
+  data:{budgets:{},entries:[]},
+  loading:false,syncing:false,syncOk:null,error:null,
+  activeTab:"budget",showForm:false,filterStatus:"All",filterCat:"All",
+  form:{vendor:"",category:"Period Panties",amount:"",date:today(),note:""},
+  rejectingId:null,rejectReason:"",editingBudget:null,budgetInput:"",
+  selMonth:cur.month,selYear:cur.year
 };
-
-function setState(patch) { for (var k in patch) { state[k] = patch[k]; } render(); }
-function api(payload, cb) {
-  fetch(SCRIPT_URL, { method: "POST", body: JSON.stringify(payload) })
-    .then(function(r) { return r.json(); })
-    .then(function(j) { if (j.error) throw new Error(j.error); cb(null, j); })
-    .catch(function(e) { cb(e); });
+function setState(patch){for(var k in patch){state[k]=patch[k];}render();}
+function api(payload,cb){
+  fetch(SCRIPT_URL,{method:"POST",body:JSON.stringify(payload)})
+    .then(function(r){return r.json();})
+    .then(function(j){if(j.error)throw new Error(j.error);cb(null,j);})
+    .catch(function(e){cb(e);});
 }
-function loadData() {
-  setState({ loading: true, error: null });
-  api({ action: "get" }, function(err, j) {
-    if (err) { setState({ loading: false, syncOk: false, error: err.message }); return; }
-    setState({ data: j.data || { budgets: {}, entries: [] }, loading: false, syncOk: true });
+function loadData(){
+  setState({loading:true,error:null});
+  api({action:"get"},function(err,j){
+    if(err){setState({loading:false,syncOk:false,error:err.message});return;}
+    setState({data:j.data||{budgets:{},entries:[]},loading:false,syncOk:true});
   });
 }
-function getBudgetsForMonth(month, year) {
-  var key = monthKey(month, year), b = state.data.budgets[key] || {}, result = {};
-  ALL_KEYS.forEach(function(k) { result[k] = Number(b[k] || 0); });
+function getBudgetsForMonth(month,year){
+  var key=monthKey(month,year),b=state.data.budgets[key]||{},result={};
+  ALL_KEYS.forEach(function(k){result[k]=Number(b[k]||0);});
   return result;
 }
-function getPrevMonthBudgets(month, year) {
-  var idx = CAL_MONTHS.indexOf(month), pm, py;
-  if (idx === 0) { pm = CAL_MONTHS[11]; py = year-1; } else { pm = CAL_MONTHS[idx-1]; py = year; }
-  return getBudgetsForMonth(pm, py);
+function getPrevMonthBudgets(month,year){
+  var idx=CAL_MONTHS.indexOf(month),pm,py;
+  if(idx===0){pm=CAL_MONTHS[11];py=year-1;}else{pm=CAL_MONTHS[idx-1];py=year;}
+  return getBudgetsForMonth(pm,py);
 }
-function el(tag, attrs) {
-  var e = document.createElement(tag);
-  var ch = Array.prototype.slice.call(arguments, 2);
-  if (attrs) { Object.keys(attrs).forEach(function(k) { var v = attrs[k]; if (k==="style"&&typeof v==="object") { Object.assign(e.style,v); } else if (k.indexOf("on")===0) { e.addEventListener(k.slice(2).toLowerCase(),v); } else if (k==="className") { e.className=v; } else { e.setAttribute(k,v); } }); }
-  ch.forEach(function(c) { if (c==null) return; if (Array.isArray(c)) { c.forEach(function(x) { if (x!=null) e.appendChild(typeof x==="string"?document.createTextNode(x):x); }); } else { e.appendChild(typeof c==="string"?document.createTextNode(c):c); } });
+function el(tag,attrs){
+  var e=document.createElement(tag);
+  var ch=Array.prototype.slice.call(arguments,2);
+  if(attrs){Object.keys(attrs).forEach(function(k){var v=attrs[k];if(k==="style"&&typeof v==="object"){Object.assign(e.style,v);}else if(k.indexOf("on")===0){e.addEventListener(k.slice(2).toLowerCase(),v);}else if(k==="className"){e.className=v;}else{e.setAttribute(k,v);}});}
+  ch.forEach(function(c){if(c==null)return;if(Array.isArray(c)){c.forEach(function(x){if(x!=null)e.appendChild(typeof x==="string"?document.createTextNode(x):x);});}else{e.appendChild(typeof c==="string"?document.createTextNode(c):c);}});
   return e;
 }
-function icon(name) { var i = document.createElement("i"); i.className = "ti ti-" + name; return i; }
-function progressBar(value, max, color) { var p = pct(value, max); return el("div",{className:"progress-track"},el("div",{className:"progress-bar",style:{width:p+"%",background:p>=90?"#E24B4A":color}})); }
-
-function budgetCard(key, budget, spent, pend, editable, month, year) {
-  var col = CAT_COLOR[key]||{fill:"#f0f0f0",stroke:"#aaa",text:"#444"}, rem = budget-spent, ek = key+"|"+month+"|"+year, isEd = state.editingBudget===ek;
-  var card = el("div",{className:"budget-card",style:{borderColor:col.stroke}});
+function icon(name){var i=document.createElement("i");i.className="ti ti-"+name;return i;}
+function progressBar(value,max,color){var p=pct(value,max);return el("div",{className:"progress-track"},el("div",{className:"progress-bar",style:{width:p+"%",background:p>=90?"#E24B4A":color}}));}
+function budgetCard(key,budget,spent,pend,editable,month,year){
+  var col=CAT_COLOR[key]||{fill:"#f0f0f0",stroke:"#aaa",text:"#444"},rem=budget-spent,ek=key+"|"+month+"|"+year,isEd=state.editingBudget===ek;
+  var card=el("div",{className:"budget-card",style:{borderColor:col.stroke}});
   card.appendChild(el("div",{className:"bc-label",style:{color:col.text}},key));
-  if (editable && isEd) {
-    var inp = el("input",{className:"cb-edit-inp",type:"number",placeholder:"Amount"}); inp.value=state.budgetInput;
+  if(editable&&isEd){
+    var inp=el("input",{className:"cb-edit-inp",type:"number",placeholder:"Amount"});inp.value=state.budgetInput;
     inp.addEventListener("input",function(e){state.budgetInput=e.target.value;});
-    var kk=key,mm=month,yy=year; inp.addEventListener("keydown",function(e){if(e.key==="Enter")saveBudget(kk,mm,yy);});
-    setTimeout(function(){inp.focus();},30); card.appendChild(inp);
+    var kk=key,mm=month,yy=year;inp.addEventListener("keydown",function(e){if(e.key==="Enter")saveBudget(kk,mm,yy);});
+    setTimeout(function(){inp.focus();},30);card.appendChild(inp);
     var acts=el("div",{className:"cb-actions"});
     acts.appendChild(el("button",{className:"cb-btn",onClick:function(){saveBudget(kk,mm,yy);}},"Set"));
     acts.appendChild(el("button",{className:"cb-ghost",onClick:function(){setState({editingBudget:null});}},"Cancel"));
     card.appendChild(acts);
-  } else {
+  }else{
     var nr=el("div",{style:{display:"flex",alignItems:"baseline",gap:"4px"}});
     nr.appendChild(el("span",{className:"bc-num"},budget>0?fmt(budget):"\u2014"));
-    if (editable) { var kk2=key,mm2=month,yy2=year,b2=budget,ek2=ek; var eb=el("button",{className:"btn-ghost",style:{padding:"0",fontSize:"11px"},onClick:function(){setState({editingBudget:ek2,budgetInput:b2||""});}}); eb.appendChild(icon("edit")); nr.appendChild(eb); }
+    if(editable){var kk2=key,mm2=month,yy2=year,b2=budget,ek2=ek;var eb=el("button",{className:"btn-ghost",style:{padding:"0",fontSize:"11px"},onClick:function(){setState({editingBudget:ek2,budgetInput:b2||""});}});eb.appendChild(icon("edit"));nr.appendChild(eb);}
     card.appendChild(nr);
-    if (budget>0) {
+    if(budget>0){
       card.appendChild(el("div",{className:"bc-spent"},"Approved: "+fmt(spent)));
-      if (pend>0) card.appendChild(el("div",{className:"bc-pending"},"Pending: "+fmt(pend)));
+      if(pend>0)card.appendChild(el("div",{className:"bc-pending"},"Pending: "+fmt(pend)));
       card.appendChild(el("div",{className:"bc-remaining",style:{color:rem<0?"#A32D2D":col.text}},rem<0?"Over "+fmt(Math.abs(rem)):"Left: "+fmt(rem)));
       card.appendChild(progressBar(spent,budget,col.stroke));
-    } else { card.appendChild(el("div",{className:"bc-spent"},editable?"Tap \u270E to set":"Not set")); }
+    }else{card.appendChild(el("div",{className:"bc-spent"},editable?"Tap \u270E to set":"Not set"));}
   }
   return card;
 }
-
-function tryLogin() { var role=state.roleInput,pw=state.pwInput; if(pw===PASSWORDS[role]){setState({loggedIn:true,role:role,loginError:"",pwInput:""});loadData();}else{setState({loginError:"Incorrect password. Please try again."});} }
-function render() { var root=document.getElementById("root"); root.innerHTML=""; if(!state.loggedIn){renderLogin(root);return;} var wrap=el("div",{id:"app"}); root.appendChild(wrap); renderApp(wrap); }
-
-function renderLogin(root) {
+function tryLogin(){var role=state.roleInput,pw=state.pwInput;if(pw===PASSWORDS[role]){setState({loggedIn:true,role:role,loginError:"",pwInput:""});loadData();}else{setState({loginError:"Incorrect password. Please try again."});}}
+function render(){var root=document.getElementById("root");root.innerHTML="";if(!state.loggedIn){renderLogin(root);return;}var wrap=el("div",{id:"app"});root.appendChild(wrap);renderApp(wrap);}
+function renderLogin(root){
   var wrap=el("div",{className:"login-wrap"}),card=el("div",{className:"login-card"});
   card.appendChild(el("div",{className:"login-logo"},"D\u2019chica"));
   card.appendChild(el("div",{className:"login-sub"},"Production Budget Manager"));
   card.appendChild(el("label",{className:"login-label"},"I am"));
   var rs=el("select",{className:"login-inp"}),o1=el("option",{value:"purchase"},"Purchase Manager"),o2=el("option",{value:"accounts"},"Accounts");
-  if(state.roleInput==="accounts")o2.selected=true; rs.appendChild(o1);rs.appendChild(o2);
+  if(state.roleInput==="accounts")o2.selected=true;rs.appendChild(o1);rs.appendChild(o2);
   rs.addEventListener("change",function(e){state.roleInput=e.target.value;});
   card.appendChild(rs);
   card.appendChild(el("label",{className:"login-label"},"Password"));
-  var pw=el("input",{type:"password",placeholder:"Enter your password",className:"login-inp"}); pw.value=state.pwInput;
+  var pw=el("input",{type:"password",placeholder:"Enter your password",className:"login-inp"});pw.value=state.pwInput;
   pw.addEventListener("input",function(e){state.pwInput=e.target.value;});
   pw.addEventListener("keydown",function(e){if(e.key==="Enter")tryLogin();});
-  setTimeout(function(){pw.focus();},50); card.appendChild(pw);
+  setTimeout(function(){pw.focus();},50);card.appendChild(pw);
   card.appendChild(el("button",{className:"login-btn",onClick:tryLogin},"Sign in"));
   if(state.loginError)card.appendChild(el("div",{className:"login-err"},state.loginError));
   wrap.appendChild(card);root.appendChild(wrap);
 }
-
-function renderApp(app) {
+function renderApp(app){
   var data=state.data,role=state.role,showForm=state.showForm,filterStatus=state.filterStatus,filterCat=state.filterCat,form=state.form,rejectingId=state.rejectingId,loading=state.loading,syncing=state.syncing,syncOk=state.syncOk,error=state.error,selMonth=state.selMonth,selYear=state.selYear,activeTab=state.activeTab;
   var mkey=monthKey(selMonth,selYear),budgets=getBudgetsForMonth(selMonth,selYear);
   var hasAny=ALL_KEYS.some(function(k){return budgets[k]>0;}),prevB=getPrevMonthBudgets(selMonth,selYear),prevHas=ALL_KEYS.some(function(k){return prevB[k]>0;});
-  var me=(data.entries||[]).filter(function(e){ return getEntryMonthKey(e)===mkey; });
+  var me=(data.entries||[]).filter(function(e){return getEntryMonthKey(e)===mkey;});
   var ca={},cp={};
   ALL_KEYS.forEach(function(k){
     ca[k]=me.filter(function(e){return e.status==="approved"&&e.category===k;}).reduce(function(s,e){return s+Number(e.amount);},0);
@@ -252,7 +224,6 @@ function renderApp(app) {
   var gb=ALL_KEYS.reduce(function(s,k){return s+budgets[k];},0),ga=ALL_KEYS.reduce(function(s,k){return s+ca[k];},0);
   var pc=me.filter(function(e){return e.status==="pending";}).length;
   var le=me.filter(function(e){return(filterStatus==="All"||e.status===filterStatus.toLowerCase())&&(filterCat==="All"||e.category===filterCat);});
-
   app.appendChild(el("div",{className:"header-row"},
     el("div",{},el("div",{className:"page-title"},"Production budget"),el("div",{className:"page-sub"},gb>0?"Total "+fmt(gb)+" \u00B7 Approved "+fmt(ga)+" \u00B7 "+pct(ga,gb)+"% used":selMonth+" "+selYear+" \u00B7 No budgets set")),
     el("div",{style:{display:"flex",gap:"8px",alignItems:"center"}},el("button",{className:"btn-ghost",onClick:loadData},icon("refresh")),el("button",{className:"logout-btn",onClick:function(){setState({loggedIn:false,role:null,pwInput:"",roleInput:"purchase"});}},"Sign out"))
@@ -260,8 +231,6 @@ function renderApp(app) {
   var dc="dot"+(syncing?" spin":syncOk===true?" green":syncOk===false?" red":"");
   app.appendChild(el("div",{className:"sync-bar"},el("span",{className:dc}),syncing?"Syncing...":syncOk===true?"Synced":syncOk===false?"Error: "+(error||"check"):"Connecting..."));
   if(loading){app.appendChild(el("div",{className:"loading"},"Loading..."));return;}
-
-  // Month selector — show all 12 calendar months
   var mb=el("div",{className:"month-bar"});mb.appendChild(el("span",{className:"month-label"},"Viewing:"));
   var ms=el("select",{});
   CAL_MONTHS.forEach(function(m){var o=el("option",{value:m},m);if(m===selMonth)o.selected=true;ms.appendChild(o);});
@@ -270,20 +239,17 @@ function renderApp(app) {
   for(var y=new Date().getFullYear()-2;y<=new Date().getFullYear()+1;y++){var yo=el("option",{value:y},String(y));if(y===selYear)yo.selected=true;ys.appendChild(yo);}
   ys.addEventListener("change",function(e){setState({selYear:parseInt(e.target.value),filterStatus:"All",filterCat:"All"});});
   mb.appendChild(ms);mb.appendChild(ys);mb.appendChild(el("span",{className:"fy-label"},getFY(selMonth,selYear)));app.appendChild(mb);
-
   if(role==="accounts"&&!hasAny&&prevHas){
     var cf=el("div",{style:{background:"#FFF8E6",border:"0.5px solid #F0C040",borderRadius:"10px",padding:"12px 14px",marginBottom:"1rem",fontSize:"13px",color:"#7A5500"}});
     cf.appendChild(document.createTextNode("No budgets set for "+selMonth+" "+selYear+". "));
     cf.appendChild(el("button",{className:"btn",style:{fontSize:"12px",padding:"5px 12px"},onClick:function(){carryForward();}},"Copy from previous month"));
     app.appendChild(cf);
   }
-
   var tb=el("div",{className:"tab-bar"});
   tb.appendChild(el("button",{className:"tab-btn"+(activeTab==="budget"?" active":""),onClick:function(){setState({activeTab:"budget"});}},"Budget & Requests"));
   tb.appendChild(el("button",{className:"tab-btn"+(activeTab==="summary"?" active":""),onClick:function(){setState({activeTab:"summary"});}},"Monthly Summary"));
   app.appendChild(tb);
   if(activeTab==="summary"){renderSummary(app);return;}
-
   var ed=role==="accounts";
   app.appendChild(el("div",{className:"section-title"},"Fabric"));
   var fg=el("div",{className:"budget-grid"});FABRIC_KEYS.forEach(function(k){fg.appendChild(budgetCard(k,budgets[k],ca[k],cp[k],ed,selMonth,selYear));});app.appendChild(fg);
@@ -292,7 +258,6 @@ function renderApp(app) {
   app.appendChild(el("div",{className:"section-title"},"MCF (Additional Budget)"));
   var mg=el("div",{className:"budget-grid-4"});MCF_KEYS.forEach(function(k){mg.appendChild(budgetCard(k,budgets[k],ca[k],cp[k],ed,selMonth,selYear));});app.appendChild(mg);
   app.appendChild(el("hr",{className:"divider"}));
-
   if(role==="purchase"){
     app.appendChild(el("div",{style:{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:"12px"}},
       el("div",{style:{fontSize:"13px",fontWeight:"500",color:"#888"}},"Purchase Manager \u00B7 "+selMonth+" "+selYear),
@@ -318,7 +283,6 @@ function renderApp(app) {
     app.appendChild(el("div",{style:{fontSize:"13px",fontWeight:"500",marginBottom:"10px",color:"#888"}},"Requests for "+selMonth+" "+selYear));
   }
   if(role==="accounts"){app.appendChild(el("div",{style:{fontSize:"13px",fontWeight:"500",marginBottom:"10px",color:"#888"}},"Accounts \u00B7 "+selMonth+" "+selYear+(pc>0?" \u00B7 "+pc+" pending":"")));}
-
   var sp=el("div",{className:"pills"});
   ["All","Pending","Approved","Rejected"].forEach(function(s){var act=filterStatus===s,sv=s;var p=el("button",{className:"pill",style:{borderColor:act?"#7F77DD":"#ddd",background:act?"#EEEDFE":"transparent",color:act?"#3C3489":"#888"},onClick:function(){setState({filterStatus:sv});}},s);if(s==="Pending"&&pc>0)p.appendChild(el("span",{className:"pending-count",style:{marginLeft:"4px"}},String(pc)));sp.appendChild(p);});
   app.appendChild(sp);
@@ -327,17 +291,11 @@ function renderApp(app) {
   app.appendChild(cpills);
   renderEntries(le,role,rejectingId,app,ca,budgets);
 }
-
-function renderSummary(app) {
+function renderSummary(app){
   var data=state.data,ae=data.entries||[],ms={};
   Object.keys(data.budgets||{}).forEach(function(k){ms[k]=true;});
   ae.forEach(function(e){ms[getEntryMonthKey(e)]=true;});
-  var mks=Object.keys(ms).sort(function(a,b){
-    var ap=a.split("-"),bp=b.split("-");
-    var am=CAL_MONTHS.indexOf(ap[0]),bm=CAL_MONTHS.indexOf(bp[0]);
-    var ay=parseInt(ap[1]),by=parseInt(bp[1]);
-    if(ay!==by)return ay-by; return am-bm;
-  });
+  var mks=Object.keys(ms).sort(function(a,b){var ap=a.split("-"),bp=b.split("-"),am=CAL_MONTHS.indexOf(ap[0]),bm=CAL_MONTHS.indexOf(bp[0]),ay=parseInt(ap[1]),by=parseInt(bp[1]);if(ay!==by)return ay-by;return am-bm;});
   if(mks.length===0){app.appendChild(el("div",{className:"empty"},"No monthly data yet."));return;}
   [{title:"Fabric",keys:FABRIC_KEYS},{title:"Other Categories",keys:OTHER_KEYS},{title:"MCF",keys:MCF_KEYS}].forEach(function(sec){
     app.appendChild(el("div",{className:"summary-section-title"},sec.title));
@@ -361,7 +319,6 @@ function renderSummary(app) {
     tbl.appendChild(tbody);wrap.appendChild(tbl);app.appendChild(wrap);
   });
 }
-
 function renderEntries(entries,role,rejectingId,app,ca,budgets){
   if(entries.length===0){app.appendChild(el("div",{className:"empty"},"No entries to show."));return;}
   entries.forEach(function(e){
@@ -395,17 +352,17 @@ function renderEntries(entries,role,rejectingId,app,ca,budgets){
           ra.appendChild(el("button",{className:"btn btn-red",onClick:function(){confirmReject(eid);}},"Confirm rejection"));
           ra.appendChild(el("button",{className:"btn-ghost",onClick:function(){setState({rejectingId:null,rejectReason:""});}},"Cancel"));
           rf.appendChild(ra);card.appendChild(rf);
-        } else {
+        }else{
           var acts=el("div",{className:"entry-actions"}),eid2=e.id;
           acts.appendChild(el("button",{className:"btn btn-green",onClick:function(){approveEntry(eid2);}},icon("check")," Approve"));
           acts.appendChild(el("button",{className:"btn btn-red",onClick:function(){setState({rejectingId:eid2,rejectReason:""});}},icon("x")," Reject"));
           card.appendChild(acts);
         }
-      } else if(st==="approved"){
+      }else if(st==="approved"){
         var ua=el("div",{className:"entry-actions"}),eid3=e.id;
         ua.appendChild(el("button",{className:"btn btn-amber",onClick:function(){if(confirm("Move this back to Pending?"))undoStatus(eid3);}},icon("arrow-back-up")," Undo Approval"));
         card.appendChild(ua);
-      } else if(st==="rejected"){
+      }else if(st==="rejected"){
         var ur=el("div",{className:"entry-actions"}),eid4=e.id;
         ur.appendChild(el("button",{className:"btn btn-amber",onClick:function(){if(confirm("Move this back to Pending?"))undoStatus(eid4);}},icon("arrow-back-up")," Undo Rejection"));
         card.appendChild(ur);
@@ -414,7 +371,6 @@ function renderEntries(entries,role,rejectingId,app,ca,budgets){
     app.appendChild(card);
   });
 }
-
 function saveBudget(key,month,year){var b=parseFloat(state.budgetInput);if(isNaN(b)||b<0){setState({editingBudget:null});return;}setState({syncing:true});api({action:"setBudget",cat:key,amount:b,month:month,year:year},function(err){if(err){setState({syncing:false,syncOk:false,error:err.message});return;}loadData();setState({syncing:false,syncOk:true,editingBudget:null});});}
 function carryForward(){var sm=state.selMonth,sy=state.selYear,prev=getPrevMonthBudgets(sm,sy);setState({syncing:true});api({action:"carryForward",month:sm,year:sy,budgets:prev},function(err){if(err){setState({syncing:false,syncOk:false,error:err.message});return;}loadData();setState({syncing:false,syncOk:true});});}
 function addEntry(){var form=state.form,mk=monthKey(state.selMonth,state.selYear);if(!form.vendor.trim()||!form.amount||isNaN(parseFloat(form.amount)))return;var entry={id:Date.now(),vendor:form.vendor,category:form.category,amount:parseFloat(form.amount),date:form.date,note:form.note||"",status:"pending",rejectReason:"",monthKey:mk};setState({syncing:true,showForm:false,form:{vendor:"",category:"Period Panties",amount:"",date:today(),note:""}});api({action:"addEntry",entry:entry},function(err){if(err){setState({syncing:false,syncOk:false,error:err.message});return;}loadData();setState({syncing:false,syncOk:true});});}
