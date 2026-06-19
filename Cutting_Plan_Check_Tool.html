@@ -1,0 +1,333 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Cutting Plan Check — D'Chica</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+  :root{
+    --paper:#e9e1cd; --paper-dark:#dcd1b6; --ink:#23231f; --ink-soft:#5a5648;
+    --chalk:#fbf8ef; --rust:#a3402b; --rust-bg:#f1ddd5; --amber:#a87a1e; --amber-bg:#f1e6cd;
+    --teal:#2f5d52; --teal-bg:#dde9e3; --line:#23231f33;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0; background:var(--paper);
+    background-image: linear-gradient(var(--line) 1px, transparent 1px), linear-gradient(90deg, var(--line) 1px, transparent 1px);
+    background-size: 28px 28px; color:var(--ink);
+    font-family: 'Courier New', ui-monospace, monospace;
+    min-height:100vh; padding: 24px 16px 60px;
+  }
+  .wrap{max-width:980px;margin:0 auto;}
+  header{display:flex;justify-content:space-between;align-items:flex-end;flex-wrap:wrap;gap:12px;border-bottom:3px solid var(--ink);padding-bottom:14px;margin-bottom:22px;}
+  h1{font-family:'Arial Black',Impact,sans-serif;font-weight:900;letter-spacing:-0.5px;font-size:clamp(26px,5vw,40px);margin:0;text-transform:uppercase;}
+  h1 span{color:var(--rust);}
+  .tag{background:var(--ink);color:var(--chalk);font-size:11px;letter-spacing:1px;text-transform:uppercase;padding:5px 10px;transform:rotate(-1deg);white-space:nowrap;}
+  .build{font-size:10px;color:var(--ink-soft);margin-top:4px;letter-spacing:.5px;text-align:right;}
+  .panel{background:var(--chalk);border:1px solid var(--ink);box-shadow:4px 4px 0 var(--ink);padding:20px;margin-bottom:22px;}
+  .panel h2{font-family:'Arial Black',Impact,sans-serif;text-transform:uppercase;font-size:15px;letter-spacing:1px;margin:0 0 14px;display:flex;align-items:center;gap:8px;}
+  .stepnum{background:var(--ink);color:var(--chalk);width:22px;height:22px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;font-size:12px;}
+  .uploads{display:grid;grid-template-columns:1fr 1fr;gap:16px;}
+  @media (max-width:640px){.uploads{grid-template-columns:1fr;}}
+  .dropzone{border:2px dashed var(--ink-soft);padding:18px;text-align:center;background:var(--paper);cursor:pointer;transition:.15s;position:relative;}
+  .dropzone:hover{border-color:var(--rust);}
+  .dropzone.filled{border-style:solid;border-color:var(--teal);background:var(--teal-bg);}
+  .dropzone input{position:absolute;inset:0;opacity:0;cursor:pointer;}
+  .dz-label{font-weight:bold;font-size:13px;text-transform:uppercase;letter-spacing:.5px;}
+  .dz-cols{font-size:11px;color:var(--ink-soft);margin-top:6px;line-height:1.5;}
+  .dz-status{font-size:12px;margin-top:8px;color:var(--teal);font-weight:bold;}
+  .controls{display:flex;gap:14px;align-items:center;margin-top:18px;flex-wrap:wrap;}
+  label.thresh{font-size:12px;display:flex;align-items:center;gap:8px;}
+  input[type=number]{width:64px;font-family:inherit;font-size:13px;border:1px solid var(--ink);padding:4px 6px;background:var(--chalk);}
+  button{font-family:'Arial Black',Impact,sans-serif;text-transform:uppercase;letter-spacing:.5px;font-size:13px;background:var(--rust);color:var(--chalk);border:none;padding:12px 22px;cursor:pointer;box-shadow:3px 3px 0 var(--ink);}
+  button:active{transform:translate(2px,2px);box-shadow:1px 1px 0 var(--ink);}
+  button:disabled{background:#bbb;cursor:not-allowed;box-shadow:none;}
+  button.secondary{background:var(--teal);}
+  .summary{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:18px;}
+  @media (max-width:640px){.summary{grid-template-columns:repeat(2,1fr);}}
+  .stat{background:var(--chalk);border:1px solid var(--ink);padding:14px;text-align:center;}
+  .stat .num{font-size:26px;font-weight:bold;font-family:Georgia,serif;}
+  .stat .lbl{font-size:10px;text-transform:uppercase;letter-spacing:.5px;color:var(--ink-soft);margin-top:4px;}
+  .stat.rust .num{color:var(--rust);}
+  table{width:100%;border-collapse:collapse;font-size:12px;background:var(--chalk);}
+  th,td{border:1px solid var(--line);padding:7px 8px;text-align:left;}
+  th{background:var(--ink);color:var(--chalk);text-transform:uppercase;font-size:10px;letter-spacing:.5px;position:sticky;top:0;}
+  tr:nth-child(even){background:var(--paper-dark);}
+  .num-col{text-align:right;}
+  .pill{display:inline-block;padding:3px 8px;font-size:10px;text-transform:uppercase;letter-spacing:.5px;font-weight:bold;}
+  .pill.remove{background:var(--rust-bg);color:var(--rust);}
+  .pill.trim{background:var(--amber-bg);color:var(--amber);}
+  .pill.approve{background:var(--teal-bg);color:var(--teal);}
+  .table-wrap{max-height:520px;overflow:auto;border:1px solid var(--ink);}
+  .empty{text-align:center;padding:40px 20px;color:var(--ink-soft);font-size:13px;}
+  .foot-actions{display:flex;justify-content:space-between;align-items:center;margin-top:14px;flex-wrap:wrap;gap:10px;}
+  .err{color:var(--rust);font-size:12px;margin-top:6px;}
+  .dl-fallback{font-size:11px;margin-top:8px;}
+  .dl-fallback a{color:var(--rust);font-weight:bold;text-decoration:underline;}
+  .signature{text-align:center;font-size:11px;color:var(--ink-soft);margin-top:30px;letter-spacing:1px;text-transform:uppercase;}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>Cutting Plan <span>Check</span></h1>
+    <div>
+      <div class="tag">Tool 1 · Stage 1 — Warehouse Review</div>
+      <div class="build">BUILD 2026-06-18 · v9 (no warnings, copy-to-clipboard fallback added)</div>
+    </div>
+  </header>
+
+  <div class="panel">
+    <h2><span class="stepnum">1</span> Upload today's stock position &amp; draft plan</h2>
+    <div class="uploads">
+      <div class="dropzone" id="dz-stock">
+        <input type="file" id="file-stock" accept=".xlsx,.xls,.csv">
+        <div class="dz-label">Stock Report</div>
+        <div class="dz-cols">Needs: <b>SKU, Closing Stock</b></div>
+        <div class="dz-status" id="status-stock"></div>
+      </div>
+      <div class="dropzone" id="dz-plan">
+        <input type="file" id="file-plan" accept=".xlsx,.xls,.csv">
+        <div class="dz-label">Draft Cutting Plan</div>
+        <div class="dz-cols">Needs: <b>SKU (with size, e.g. RMBR001/L), Qty</b></div>
+        <div class="dz-status" id="status-plan"></div>
+      </div>
+    </div>
+    <div class="controls">
+      <label class="thresh">Buffer allowance: <input type="number" id="buffer-pct" value="0" min="0"> units per SKU</label>
+      <button id="run-btn" disabled>Run Check</button>
+    </div>
+    <div class="err" id="err-msg"></div>
+  </div>
+
+  <div id="results" style="display:none;">
+    <div class="summary">
+      <div class="stat"><div class="num" id="s-total">0</div><div class="lbl">SKUs Checked</div></div>
+      <div class="stat rust"><div class="num" id="s-flagged">0</div><div class="lbl">Flagged Overstock</div></div>
+      <div class="stat rust"><div class="num" id="s-units">0</div><div class="lbl">Units Trimmed/Removed</div></div>
+      <div class="stat"><div class="num" id="s-approved">0</div><div class="lbl">Approved As-Is</div></div>
+    </div>
+    <div class="panel">
+      <h2><span class="stepnum">2</span> Review &amp; export adjusted plan</h2>
+      <div class="table-wrap">
+        <table id="results-table">
+          <thead><tr><th>SKU</th><th>Item Name</th><th class="num-col">Planned</th><th class="num-col">Closing</th><th class="num-col">Recommended</th><th>Status</th></tr></thead>
+          <tbody id="results-body"></tbody>
+        </table>
+      </div>
+      <div class="foot-actions">
+        <span id="result-note" style="font-size:11px;color:var(--ink-soft);"></span>
+        <div style="display:flex;gap:10px;">
+          <button class="secondary" id="copy-btn">Copy Results</button>
+          <button class="secondary" id="export-btn">Download CSV</button>
+        </div>
+      </div>
+      <div class="dl-fallback" id="dl-fallback"></div>
+      <textarea id="csv-textarea" readonly style="width:100%;height:0;opacity:0;position:absolute;left:-9999px;"></textarea>
+      <div id="copy-confirm" style="font-size:11px;color:var(--teal);font-weight:bold;margin-top:8px;display:none;">\u2713 Copied — paste into Excel or Google Sheets</div>
+    </div>
+  </div>
+
+  <div class="signature">Approved plan flows to Tool 1 · Stage 2 — Production Manager Sign-off</div>
+</div>
+
+<script>
+let stockData = null, stockByName = {}, planData = null, lastResults = [];
+
+function normHeader(h){ return String(h).trim().toLowerCase(); }
+function findCol(headers, candidates){
+  for(const c of candidates){
+    const idx = headers.findIndex(h => normHeader(h).includes(c));
+    if(idx !== -1) return idx;
+  }
+  return -1;
+}
+function findHeaderRow(rows, mustInclude){
+  for(let i=0;i<Math.min(rows.length,5);i++){
+    const rowText = rows[i].join('|').toLowerCase();
+    if(mustInclude.some(k => rowText.includes(k))) return i;
+  }
+  return 0;
+}
+function parseFile(file, cb){
+  const reader = new FileReader();
+  reader.onload = e => {
+    try{
+      const wb = XLSX.read(e.target.result, {type:'binary'});
+      const sheet = wb.Sheets[wb.SheetNames[0]];
+      cb(null, XLSX.utils.sheet_to_json(sheet, {header:1, defval:''}));
+    }catch(err){ cb(err); }
+  };
+  reader.onerror = () => cb(new Error('Could not read file'));
+  reader.readAsBinaryString(file);
+}
+
+function loadStock(file){
+  parseFile(file, (err, rows) => {
+    if(err){ document.getElementById('status-stock').textContent = 'Error reading file'; return; }
+    const headerRowIdx = findHeaderRow(rows, ['particular','sku','closing']);
+    const headers = rows[headerRowIdx];
+    const skuIdx = findCol(headers, ['sku','particular','rm code']);
+    const nameIdx = findCol(headers, ['item name','name']);
+    const closingIdx = findCol(headers, ['closing']);
+
+    if(skuIdx===-1 || closingIdx===-1){
+      document.getElementById('err-msg').innerHTML = 'Stock report: could not find SKU / Closing columns.<br><span style="font-size:10px;">Headers found: ' + headers.join(' | ') + '</span>';
+      return;
+    }
+    stockData = {};
+    stockByName = {};
+    for(let i=headerRowIdx+1;i<rows.length;i++){
+      const r = rows[i];
+      if(!r[skuIdx]) continue;
+      const closing = parseFloat(r[closingIdx])||0;
+      const name = nameIdx!==-1 ? String(r[nameIdx]).trim() : '';
+      stockData[String(r[skuIdx]).trim()] = { name, closing };
+      if(name){
+        const key = name.toLowerCase();
+        stockByName[key] = (stockByName[key]||0) + closing;
+      }
+    }
+    document.getElementById('status-stock').innerHTML = '\u2713 ' + Object.keys(stockData).length + ' SKUs loaded<br><span style="font-weight:normal;font-size:10px;">Closing col: "' + headers[closingIdx] + '"</span>';
+    document.getElementById('dz-stock').classList.add('filled');
+    checkReady();
+  });
+}
+
+function loadPlan(file){
+  parseFile(file, (err, rows) => {
+    if(err){ document.getElementById('status-plan').textContent = 'Error reading file'; return; }
+    const headerRowIdx = findHeaderRow(rows, ['particular','sku','qty']);
+    const headers = rows[headerRowIdx];
+    const skuIdx = findCol(headers, ['sku','particular','rm code']);
+    const nameIdx = findCol(headers, ['item name','item','name']);
+    const qtyIdx = findCol(headers, ['qty','quantity']);
+    if(skuIdx===-1 || qtyIdx===-1){
+      document.getElementById('err-msg').textContent = 'Cutting plan: could not find SKU / Qty columns.';
+      return;
+    }
+    const plan = {};
+    for(let i=headerRowIdx+1;i<rows.length;i++){
+      const r = rows[i];
+      if(!r[skuIdx] || String(r[skuIdx]).toLowerCase().includes('grand total')) continue;
+      const sku = String(r[skuIdx]).trim();
+      const qty = parseFloat(r[qtyIdx])||0;
+      if(!plan[sku]) plan[sku] = {name: nameIdx!==-1 ? r[nameIdx] : '', qty:0};
+      plan[sku].qty += qty;
+    }
+    planData = plan;
+    document.getElementById('status-plan').innerHTML = '\u2713 ' + Object.keys(plan).length + ' SKUs loaded';
+    document.getElementById('dz-plan').classList.add('filled');
+    checkReady();
+  });
+}
+
+function checkReady(){ document.getElementById('run-btn').disabled = !(stockData && planData); }
+document.getElementById('file-stock').addEventListener('change', e => { if(e.target.files[0]) loadStock(e.target.files[0]); });
+document.getElementById('file-plan').addEventListener('change', e => { if(e.target.files[0]) loadPlan(e.target.files[0]); });
+
+document.getElementById('run-btn').addEventListener('click', () => {
+  document.getElementById('err-msg').textContent='';
+  const bufferUnits = parseFloat(document.getElementById('buffer-pct').value)||0;
+  const results = [];
+  let flagged=0, approved=0, unitsAdjusted=0;
+
+  Object.keys(planData).forEach(sku => {
+    const plan = planData[sku];
+    const stock = stockData[sku];
+    if(!stock){
+      results.push({sku, name:plan.name, planned:plan.qty, closing:'—', recommended:plan.qty, status:'approve'});
+      approved++;
+      return;
+    }
+    const excessNow = Math.max(0, stock.closing - bufferUnits);
+    const recommended = Math.round(Math.max(0, plan.qty - excessNow)*10)/10;
+    let status = recommended >= plan.qty-0.5 ? 'approve' : (recommended<=0.5 ? 'remove' : 'trim');
+    if(status!=='approve'){ flagged++; unitsAdjusted += (plan.qty-recommended); } else approved++;
+    results.push({sku, name: stock.name||plan.name, planned:plan.qty, closing:stock.closing, recommended, status});
+  });
+
+  results.sort((a,b) => (b.planned-b.recommended) - (a.planned-a.recommended));
+  lastResults = results;
+  document.getElementById('s-total').textContent = results.length;
+  document.getElementById('s-flagged').textContent = flagged;
+  document.getElementById('s-units').textContent = Math.round(unitsAdjusted).toLocaleString();
+  document.getElementById('s-approved').textContent = approved;
+
+  const tbody = document.getElementById('results-body');
+  tbody.innerHTML = '';
+  if(results.length===0){
+    tbody.innerHTML = '<tr><td colspan="6" class="empty">No matching SKUs found</td></tr>';
+  } else {
+    results.forEach(r => {
+      const tr = document.createElement('tr');
+      const pillLabel = r.status==='remove' ? 'Remove · MTO only' : r.status==='trim' ? 'Trim' : 'Approve';
+      tr.innerHTML = `<td>${r.sku}</td><td>${r.name||''}</td><td class="num-col">${r.planned}</td><td class="num-col">${r.closing}</td><td class="num-col">${r.recommended}</td><td><span class="pill ${r.status}">${pillLabel}</span></td>`;
+      tbody.appendChild(tr);
+    });
+  }
+  document.getElementById('result-note').textContent = `Buffer allowance used: ${bufferUnits} units per SKU`;
+  document.getElementById('results').style.display = 'block';
+  document.getElementById('dl-fallback').innerHTML = '';
+});
+
+function buildCsv(){
+  let csv = 'SKU,Item Name,Planned Qty,Closing Stock,Recommended Qty,Status\n';
+  lastResults.forEach(r => {
+    csv += `${r.sku},"${(r.name||'').replace(/"/g,'')}",${r.planned},${r.closing},${r.recommended},${r.status}\n`;
+  });
+  return csv;
+}
+
+document.getElementById('copy-btn').addEventListener('click', () => {
+  if(lastResults.length===0) return;
+  const csv = buildCsv();
+  const ta = document.getElementById('csv-textarea');
+  ta.value = csv;
+  ta.style.position='fixed'; ta.style.left='0'; ta.style.top='0'; ta.style.opacity='0.01'; ta.style.height='100px'; ta.style.width='100px';
+  ta.focus(); ta.select();
+  let copied = false;
+  try{
+    if(navigator.clipboard && navigator.clipboard.writeText){
+      navigator.clipboard.writeText(csv);
+      copied = true;
+    }
+  }catch(e){}
+  if(!copied){
+    try{ copied = document.execCommand('copy'); }catch(e){}
+  }
+  ta.style.position='absolute'; ta.style.left='-9999px'; ta.style.height='0'; ta.style.opacity='0';
+  const confirmEl = document.getElementById('copy-confirm');
+  if(copied){
+    confirmEl.textContent = '\u2713 Copied — paste into Excel or Google Sheets';
+    confirmEl.style.display = 'block';
+  } else {
+    confirmEl.textContent = 'Could not auto-copy — the text box below is selected, press Cmd+C / Ctrl+C now';
+    confirmEl.style.display = 'block';
+    ta.style.position='static'; ta.style.opacity='1'; ta.style.height='120px'; ta.style.width='100%'; ta.style.marginTop='10px';
+    ta.focus(); ta.select();
+  }
+});
+
+document.getElementById('export-btn').addEventListener('click', () => {
+  if(lastResults.length===0) return;
+  try{
+    const csv = buildCsv();
+    const blob = new Blob([csv], {type:'text/csv'});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = 'adjusted_cutting_plan.csv';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    setTimeout(() => URL.revokeObjectURL(url), 2000);
+    document.getElementById('dl-fallback').innerHTML =
+      'If the download didn\'t start automatically, <a href="' + url + '" download="adjusted_cutting_plan.csv">click here to download the CSV</a>, or use "Copy Results" above instead.';
+  }catch(e){
+    document.getElementById('err-msg').textContent = 'Download failed: ' + e.message + ' — use "Copy Results" instead.';
+  }
+});
+</script>
+</body>
+</html>
