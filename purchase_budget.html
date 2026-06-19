@@ -1,0 +1,260 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Purchase Budget — D'Chica</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:'Segoe UI',Arial,sans-serif;background:#f5f5f0;color:#222;min-height:100vh;}
+.topbar{background:#1a1a1a;color:#fff;padding:14px 24px;display:flex;justify-content:space-between;align-items:center;}
+.topbar h1{font-size:18px;letter-spacing:1px;text-transform:uppercase;}
+.topbar .right{display:flex;align-items:center;gap:16px;font-size:13px;}
+.btn{padding:8px 18px;border:none;border-radius:4px;cursor:pointer;font-size:13px;font-weight:600;}
+.btn-primary{background:#b5451b;color:#fff;}
+.btn-secondary{background:#555;color:#fff;}
+.btn-small{padding:5px 12px;font-size:12px;}
+.btn-green{background:#2e7d32;color:#fff;}
+.btn-red{background:#c62828;color:#fff;}
+.wrap{max-width:1100px;margin:0 auto;padding:24px 16px;}
+.login-box{max-width:380px;margin:80px auto;background:#fff;border-radius:8px;box-shadow:0 2px 16px rgba(0,0,0,.1);padding:36px;}
+.login-box h2{margin-bottom:20px;font-size:20px;text-align:center;}
+select,input{width:100%;padding:10px 12px;border:1px solid #ccc;border-radius:4px;font-size:14px;margin-bottom:14px;}
+label{font-size:13px;font-weight:600;display:block;margin-bottom:5px;}
+.month-bar{display:flex;gap:10px;align-items:center;margin-bottom:22px;flex-wrap:wrap;}
+.month-bar select{width:auto;margin:0;}
+.section-title{font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:#555;margin:24px 0 12px;border-bottom:2px solid #ddd;padding-bottom:6px;}
+.budget-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:14px;margin-bottom:24px;}
+.budget-card{background:#fff;border-radius:6px;padding:16px;box-shadow:0 1px 4px rgba(0,0,0,.08);}
+.budget-card .cat{font-size:12px;text-transform:uppercase;letter-spacing:.5px;color:#888;margin-bottom:4px;}
+.budget-card .amt{font-size:22px;font-weight:700;color:#1a1a1a;}
+.budget-card .spent{font-size:12px;color:#888;margin-top:4px;}
+.budget-card .edit-row{margin-top:10px;display:flex;gap:6px;}
+.budget-card input{margin:0;padding:6px 8px;font-size:13px;}
+.form-box{background:#fff;border-radius:6px;padding:20px;box-shadow:0 1px 4px rgba(0,0,0,.08);margin-bottom:22px;}
+.form-box h3{margin-bottom:14px;font-size:15px;}
+.form-row{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+@media(max-width:600px){.form-row{grid-template-columns:1fr;}}
+.entry-table{width:100%;border-collapse:collapse;background:#fff;border-radius:6px;overflow:hidden;box-shadow:0 1px 4px rgba(0,0,0,.08);}
+.entry-table th{background:#1a1a1a;color:#fff;padding:10px 12px;text-align:left;font-size:12px;text-transform:uppercase;letter-spacing:.5px;}
+.entry-table td{padding:10px 12px;border-bottom:1px solid #f0f0f0;font-size:13px;}
+.entry-table tr:last-child td{border-bottom:none;}
+.badge{display:inline-block;padding:3px 8px;border-radius:12px;font-size:11px;font-weight:700;}
+.badge-pending{background:#fff3e0;color:#e65100;}
+.badge-approved{background:#e8f5e9;color:#2e7d32;}
+.badge-rejected{background:#ffebee;color:#c62828;}
+.msg{padding:10px 14px;border-radius:4px;font-size:13px;margin-bottom:14px;}
+.msg-ok{background:#e8f5e9;color:#2e7d32;}
+.msg-err{background:#ffebee;color:#c62828;}
+.reject-input{display:flex;gap:8px;margin-top:6px;}
+.reject-input input{margin:0;flex:1;padding:6px 8px;font-size:12px;}
+.summary-table{width:100%;border-collapse:collapse;background:#fff;box-shadow:0 1px 4px rgba(0,0,0,.08);}
+.summary-table th,.summary-table td{padding:9px 12px;border:1px solid #eee;font-size:13px;}
+.summary-table th{background:#f5f5f0;font-weight:700;}
+</style>
+</head>
+<body>
+<div class="topbar">
+  <h1>D'Chica · Purchase Budget</h1>
+  <div class="right" id="topbar-right"></div>
+</div>
+
+<div class="wrap" id="app"></div>
+
+<script>
+var SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyDRV2V8Vogbtts7sYqSCPrGe-Z1BsezCWdFJQFG5lIbuo2VrY9Sei_U9jMoB9eUmRh/exec";
+var PASSWORDS = { purchase: "dchica123", accounts: "accounts456" };
+
+var CAL_MONTHS = ["January","February","March","April","May","June","July","August","September","October","November","December"];
+var CATEGORIES = ["Period Panties","Bras & Camis","Others","Packaging","Trims","Finished Product","MCF Period Panties","MCF Bras & Camis","MCF Finished Goods","MCF Others"];
+var FABRIC_CATS = ["Period Panties","Bras & Camis","Others"];
+var OTHER_CATS = ["Packaging","Trims","Finished Product"];
+var MCF_CATS = ["MCF Period Panties","MCF Bras & Camis","MCF Finished Goods","MCF Others"];
+
+var state = {
+  role: null,
+  monthKey: null,
+  budgets: {},
+  entries: [],
+  syncing: false,
+  syncOk: false,
+  error: null,
+  rejectingId: null,
+  rejectReason: "",
+  editBudget: {},
+  msg: null
+};
+
+function getDefaultMonth(){
+  var d=new Date(); return (d.getMonth()+1)+"-"+d.getFullYear();
+}
+function monthKeyToLabel(mk){
+  var p=mk.split("-"); return CAL_MONTHS[parseInt(p[0])-1]+" "+p[1];
+}
+function labelToKey(label){
+  var p=label.split(" "); var idx=CAL_MONTHS.indexOf(p[0]); return (idx+1)+"-"+p[1];
+}
+function getMonthOptions(){
+  var opts=[]; var d=new Date(); d.setMonth(d.getMonth()-2);
+  for(var i=0;i<8;i++){
+    var k=(d.getMonth()+1)+"-"+d.getFullYear();
+    opts.push(k); d.setMonth(d.getMonth()+1);
+  }
+  return opts;
+}
+
+function api(payload, cb){
+  var url=SCRIPT_URL+"?t="+Date.now();
+  fetch(url,{method:"POST",body:JSON.stringify(payload)})
+    .then(function(r){return r.json();})
+    .then(function(d){cb(null,d);})
+    .catch(function(e){cb(e);});
+}
+
+function setState(obj){
+  Object.assign(state,obj); render();
+}
+
+function loadData(){
+  setState({syncing:true,error:null});
+  api({action:"getData",monthKey:state.monthKey},function(err,d){
+    if(err){setState({syncing:false,error:"Could not connect to sheet: "+err.message});return;}
+    var bmap={};
+    (d.budgets||[]).forEach(function(b){bmap[b.category]=parseFloat(b.amount)||0;});
+    setState({syncing:false,budgets:bmap,entries:d.entries||[]});
+  });
+}
+
+function submitEntry(form){
+  var entry={id:Date.now()+"",vendor:form.vendor,category:form.category,amount:parseFloat(form.amount),date:form.date,note:form.note,status:"pending",monthKey:state.monthKey};
+  setState({syncing:true});
+  api({action:"addEntry",entry:entry},function(err){
+    if(err){setState({syncing:false,error:err.message});return;}
+    loadData(); setState({syncing:false,syncOk:true,msg:"Request submitted!"});
+    setTimeout(function(){setState({msg:null});},3000);
+  });
+}
+
+function saveBudget(cat,amt){
+  setState({syncing:true});
+  api({action:"setBudget",monthKey:state.monthKey,category:cat,amount:amt},function(err){
+    if(err){setState({syncing:false,error:err.message});return;}
+    loadData(); setState({syncing:false,msg:"Budget saved!"});
+    setTimeout(function(){setState({msg:null});},3000);
+  });
+}
+
+function updateStatus(id,status,reason){
+  if(status==="rejected"&&!reason){setState({msg:"Please enter a reject reason."});return;}
+  setState({syncing:true,rejectingId:null,rejectReason:""});
+  api({action:"updateStatus",id:id,status:status,rejectReason:reason||""},function(err){
+    if(err){setState({syncing:false,error:err.message});return;}
+    loadData(); setState({syncing:false,syncOk:true});
+  });
+}
+
+// Render
+function render(){
+  var app=document.getElementById("app");
+  var tb=document.getElementById("topbar-right");
+
+  if(!state.role){
+    tb.innerHTML="";
+    app.innerHTML='<div class="login-box"><h2>Sign In</h2><div id="login-err" style="color:#c62828;font-size:13px;margin-bottom:10px;"></div><label>Role</label><select id="lr"><option value="">Select role...</option><option value="purchase">Purchase Manager</option><option value="accounts">Accounts</option></select><label>Password</label><input type="password" id="lp" placeholder="Password"><button class="btn btn-primary" style="width:100%" onclick="doLogin()">Sign In</button></div>';
+    return;
+  }
+
+  // Topbar
+  tb.innerHTML='<span>'+monthKeyToLabel(state.monthKey)+'</span><span style="color:#aaa">|</span><span style="text-transform:capitalize">'+state.role+'</span><button class="btn btn-secondary btn-small" onclick="doLogout()">Sign Out</button>';
+
+  var html='';
+
+  // Month selector
+  html+='<div class="month-bar"><label style="margin:0;font-size:13px;">Month:</label><select onchange="changeMonth(this.value)">';
+  getMonthOptions().forEach(function(mk){
+    html+='<option value="'+mk+'"'+(mk===state.monthKey?" selected":"")+'>'+monthKeyToLabel(mk)+'</option>';
+  });
+  html+='</select>';
+  if(state.syncing) html+='<span style="font-size:12px;color:#888;">Syncing...</span>';
+  if(state.msg) html+='<span style="font-size:12px;color:#2e7d32;">'+state.msg+'</span>';
+  if(state.error) html+='<span style="font-size:12px;color:#c62828;">'+state.error+'</span>';
+  html+='</div>';
+
+  // Budget cards
+  function renderSection(title,cats){
+    html+='<div class="section-title">'+title+'</div><div class="budget-grid">';
+    cats.forEach(function(cat){
+      var budget=state.budgets[cat]||0;
+      var spent=(state.entries||[]).filter(function(e){return e.category===cat&&e.status==="approved";}).reduce(function(s,e){return s+parseFloat(e.amount||0);},0);
+      var pct=budget>0?Math.min(100,Math.round(spent/budget*100)):0;
+      html+='<div class="budget-card"><div class="cat">'+cat+'</div><div class="amt">₹'+budget.toLocaleString('en-IN')+'</div><div class="spent">Spent: ₹'+spent.toLocaleString('en-IN')+' ('+pct+'%)</div>';
+      if(state.role==="accounts"){
+        var ev=state.editBudget[cat];
+        html+='<div class="edit-row"><input type="number" id="b_'+cat.replace(/\s/g,'_')+'" placeholder="New amount" value="'+(ev||"")+'" onchange="state.editBudget[\''+cat+'\']=(this.value)"><button class="btn btn-primary btn-small" onclick="saveBudget(\''+cat+'\',parseFloat(document.getElementById(\'b_'+cat.replace(/\s/g,'_')+'\').value))">Save</button></div>';
+      }
+      html+='</div>';
+    });
+    html+='</div>';
+  }
+  renderSection("Fabric",FABRIC_CATS);
+  renderSection("Other Categories",OTHER_CATS);
+  renderSection("MCF",MCF_CATS);
+
+  // Submit form (purchase manager)
+  if(state.role==="purchase"){
+    html+='<div class="form-box"><h3>New Purchase Request</h3><div class="form-row"><div><label>Category</label><select id="fc"><option value="">Select...</option>';
+    CATEGORIES.forEach(function(c){html+='<option>'+c+'</option>';});
+    html+='</select></div><div><label>Vendor</label><input id="fv" placeholder="Vendor name"></div></div><div class="form-row"><div><label>Amount (₹)</label><input id="fa" type="number" placeholder="0"></div><div><label>Date</label><input id="fd" type="date" value="'+new Date().toISOString().slice(0,10)+'"></div></div><label>Note (optional)</label><input id="fn" placeholder="Additional details"><br><br><button class="btn btn-primary" onclick="doSubmit()">Submit Request</button></div>';
+  }
+
+  // Entries table
+  var entries=state.entries||[];
+  var filtered=state.role==="purchase"?entries:entries.filter(function(e){return e.status==="pending";});
+  if(state.role==="accounts") filtered=entries;
+
+  html+='<div class="section-title">Entries — '+monthKeyToLabel(state.monthKey)+'</div>';
+  if(!entries.length){html+='<p style="color:#888;font-size:13px;padding:12px 0;">No entries for this month.</p>';}
+  else{
+    html+='<table class="entry-table"><thead><tr><th>Vendor</th><th>Category</th><th>Amount</th><th>Date</th><th>Note</th><th>Status</th>'+(state.role==="accounts"?"<th>Action</th>":"")+'</tr></thead><tbody>';
+    entries.forEach(function(e){
+      html+='<tr><td>'+e.vendor+'</td><td>'+e.category+'</td><td>₹'+parseFloat(e.amount||0).toLocaleString('en-IN')+'</td><td>'+(e.date||"")+'</td><td>'+(e.note||"—")+'</td><td><span class="badge badge-'+e.status+'">'+e.status+'</span>'+(e.rejectReason?'<br><span style="font-size:11px;color:#888;">'+e.rejectReason+'</span>':"")+'</td>';
+      if(state.role==="accounts"&&e.status==="pending"){
+        html+='<td><button class="btn btn-green btn-small" onclick="updateStatus(\''+e.id+'\',\'approved\',\'\')">Approve</button> ';
+        if(state.rejectingId===e.id){
+          html+='<div class="reject-input"><input id="rri" placeholder="Reason" value="'+state.rejectReason+'" oninput="state.rejectReason=this.value"><button class="btn btn-red btn-small" onclick="updateStatus(\''+e.id+'\',\'rejected\',state.rejectReason)">Confirm</button></div>';
+        }else{
+          html+='<button class="btn btn-red btn-small" onclick="setState({rejectingId:\''+e.id+'\',rejectReason:\'\'})">Reject</button>';
+        }
+        html+='</td>';
+      }else if(state.role==="accounts"){html+='<td>—</td>';}
+      html+='</tr>';
+    });
+    html+='</tbody></table>';
+  }
+
+  app.innerHTML=html;
+}
+
+function doLogin(){
+  var role=document.getElementById("lr").value;
+  var pass=document.getElementById("lp").value;
+  if(!role){document.getElementById("login-err").textContent="Please select a role.";return;}
+  if(pass!==PASSWORDS[role]){document.getElementById("login-err").textContent="Incorrect password.";return;}
+  state.role=role; state.monthKey=getDefaultMonth(); loadData();
+}
+function doLogout(){state.role=null;state.entries=[];state.budgets={};state.msg=null;render();}
+function changeMonth(mk){state.monthKey=mk;loadData();}
+function doSubmit(){
+  var cat=document.getElementById("fc").value;
+  var vendor=document.getElementById("fv").value.trim();
+  var amount=document.getElementById("fa").value;
+  var date=document.getElementById("fd").value;
+  var note=document.getElementById("fn").value.trim();
+  if(!cat||!vendor||!amount||!date){setState({msg:"Please fill all required fields."});return;}
+  submitEntry({category:cat,vendor:vendor,amount:amount,date:date,note:note});
+}
+
+render();
+</script>
+</body>
+</html>
