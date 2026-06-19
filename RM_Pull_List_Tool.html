@@ -1,0 +1,372 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>RM Pull List — D'Chica</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+  :root{
+    --paper:#e9e1cd;--paper-dark:#dcd1b6;--ink:#23231f;--ink-soft:#5a5648;
+    --chalk:#fbf8ef;--rust:#a3402b;--rust-bg:#f1ddd5;
+    --amber:#a87a1e;--amber-bg:#f1e6cd;
+    --teal:#2f5d52;--teal-bg:#dde9e3;
+    --line:#23231f33;
+  }
+  *{box-sizing:border-box;margin:0;padding:0;}
+  body{background:var(--paper);background-image:linear-gradient(var(--line) 1px,transparent 1px),linear-gradient(90deg,var(--line) 1px,transparent 1px);background-size:28px 28px;color:var(--ink);font-family:'Courier New',ui-monospace,monospace;min-height:100vh;padding:24px 16px 60px;}
+  .wrap{max-width:860px;margin:0 auto;}
+  header{display:flex;justify-content:space-between;align-items:flex-end;flex-wrap:wrap;gap:12px;border-bottom:3px solid var(--ink);padding-bottom:14px;margin-bottom:22px;}
+  h1{font-family:'Arial Black',Impact,sans-serif;font-weight:900;letter-spacing:-0.5px;font-size:clamp(24px,5vw,38px);margin:0;text-transform:uppercase;}
+  h1 span{color:var(--amber);}
+  .tag{background:var(--ink);color:var(--chalk);font-size:11px;letter-spacing:1px;text-transform:uppercase;padding:5px 10px;transform:rotate(-1deg);white-space:nowrap;}
+  .build{font-size:10px;color:var(--ink-soft);margin-top:4px;letter-spacing:.5px;text-align:right;}
+
+  /* tabs */
+  .tab-bar{display:flex;border-bottom:3px solid var(--ink);margin-bottom:22px;}
+  .tab-btn{font-family:'Arial Black',Impact,sans-serif;text-transform:uppercase;letter-spacing:.5px;font-size:12px;padding:12px 24px;border:2px solid var(--ink);border-bottom:none;background:var(--paper-dark);cursor:pointer;margin-right:6px;margin-bottom:-3px;}
+  .tab-btn.active{background:var(--chalk);border-bottom:3px solid var(--chalk);}
+  .tab-pane{display:none;}
+  .tab-pane.active{display:block;}
+
+  .panel{background:var(--chalk);border:1px solid var(--ink);box-shadow:4px 4px 0 var(--ink);padding:24px;margin-bottom:22px;}
+  .panel h2{font-family:'Arial Black',Impact,sans-serif;text-transform:uppercase;font-size:14px;letter-spacing:1px;margin:0 0 16px;}
+
+  .dropzone{border:2px dashed var(--ink-soft);padding:32px 20px;text-align:center;background:var(--paper);cursor:pointer;position:relative;transition:.15s;}
+  .dropzone:hover{border-color:var(--amber);}
+  .dropzone.filled{border-style:solid;border-color:var(--teal);background:var(--teal-bg);}
+  .dropzone input{position:absolute;inset:0;opacity:0;cursor:pointer;}
+  .dz-label{font-weight:bold;font-size:14px;text-transform:uppercase;letter-spacing:.5px;}
+  .dz-sub{font-size:11px;color:var(--ink-soft);margin-top:6px;line-height:1.6;}
+  .dz-status{font-size:12px;margin-top:10px;color:var(--teal);font-weight:bold;line-height:1.5;}
+
+  .next-btn{margin-top:18px;font-family:'Arial Black',Impact,sans-serif;text-transform:uppercase;letter-spacing:.5px;font-size:13px;background:var(--amber);color:var(--chalk);border:none;padding:12px 28px;cursor:pointer;box-shadow:3px 3px 0 var(--ink);}
+  .next-btn:disabled{background:#bbb;cursor:not-allowed;box-shadow:none;}
+  .next-btn:active{transform:translate(2px,2px);box-shadow:1px 1px 0 var(--ink);}
+  button.teal{background:var(--teal);}
+  button.secondary{background:var(--ink-soft);}
+  button{font-family:'Arial Black',Impact,sans-serif;text-transform:uppercase;letter-spacing:.5px;font-size:13px;color:var(--chalk);border:none;padding:12px 22px;cursor:pointer;box-shadow:3px 3px 0 var(--ink);}
+  button:active{transform:translate(2px,2px);box-shadow:1px 1px 0 var(--ink);}
+  button:disabled{background:#bbb!important;cursor:not-allowed;box-shadow:none;}
+
+  .step-check{display:inline-block;width:20px;height:20px;border-radius:50%;background:var(--teal);color:white;font-size:11px;text-align:center;line-height:20px;margin-right:6px;font-weight:bold;}
+  .step-pending{display:inline-block;width:20px;height:20px;border-radius:50%;background:var(--ink-soft);color:white;font-size:11px;text-align:center;line-height:20px;margin-right:6px;}
+
+  .err{color:var(--rust);font-size:12px;margin-top:8px;}
+  .warn-box{background:var(--rust-bg);border:1px solid var(--rust);padding:12px 14px;font-size:12px;margin-bottom:16px;line-height:1.6;}
+
+  table{width:100%;border-collapse:collapse;font-size:12px;}
+  th,td{border:1px solid var(--line);padding:7px 9px;text-align:left;}
+  th{background:var(--ink);color:var(--chalk);text-transform:uppercase;font-size:10px;letter-spacing:.5px;position:sticky;top:0;}
+  tr:nth-child(even){background:var(--paper-dark);}
+  .num-col{text-align:right;font-weight:bold;}
+  .table-wrap{max-height:480px;overflow:auto;border:1px solid var(--ink);}
+
+  .summary{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:18px;}
+  @media(max-width:580px){.summary{grid-template-columns:1fr 1fr;}}
+  .stat{background:var(--chalk);border:1px solid var(--ink);padding:14px;text-align:center;}
+  .stat .num{font-size:26px;font-weight:bold;font-family:Georgia,serif;}
+  .stat .lbl{font-size:10px;text-transform:uppercase;letter-spacing:.5px;color:var(--ink-soft);margin-top:4px;}
+  .stat.amber .num{color:var(--amber);}
+  .stat.teal .num{color:var(--teal);}
+  .stat.rust .num{color:var(--rust);}
+
+  .actions{display:flex;gap:12px;margin-top:16px;flex-wrap:wrap;align-items:center;}
+  .search-bar input{font-family:inherit;font-size:12px;border:1px solid var(--ink);padding:7px 10px;background:var(--chalk);width:220px;margin-bottom:12px;}
+  #copy-confirm{font-size:11px;color:var(--teal);font-weight:bold;margin-top:8px;display:none;}
+  .signature{text-align:center;font-size:11px;color:var(--ink-soft);margin-top:30px;letter-spacing:1px;text-transform:uppercase;}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>RM Pull <span>List</span></h1>
+    <div>
+      <div class="tag">Tool 2 &middot; DC &rarr; RM</div>
+      <div class="build">BUILD 2026-06-19 &middot; v2</div>
+    </div>
+  </header>
+
+  <div class="tab-bar">
+    <div class="tab-btn active" data-pane="pane-master" id="tbtn-master">
+      <span id="icon-master" class="step-pending">1</span>DC &rarr; RM Master
+    </div>
+    <div class="tab-btn" data-pane="pane-req" id="tbtn-req">
+      <span id="icon-req" class="step-pending">2</span>Today's Requirement
+    </div>
+    <div class="tab-btn" data-pane="pane-result" id="tbtn-result">
+      <span id="icon-result" class="step-pending">3</span>RM Pull List
+    </div>
+  </div>
+
+  <!-- TAB 1: Master -->
+  <div class="tab-pane active" id="pane-master">
+    <div class="panel">
+      <h2>Upload DC &rarr; RM Master</h2>
+      <div class="dropzone" id="dz-master">
+        <input type="file" id="file-master" accept=".xlsx,.xls,.csv">
+        <div class="dz-label">Drop the master file here</div>
+        <div class="dz-sub">Needs columns: <b>DC Code</b> (Item to Produce) and <b>Raw Materials</b><br>Upload again whenever new DC codes are added</div>
+        <div class="dz-status" id="status-master"></div>
+      </div>
+      <div class="err" id="err-master"></div>
+      <br>
+      <button class="next-btn" id="next-to-req" disabled>Next: Upload Requirement &rarr;</button>
+    </div>
+  </div>
+
+  <!-- TAB 2: Requirement -->
+  <div class="tab-pane" id="pane-req">
+    <div class="panel">
+      <h2>Upload Today's DC Requirement</h2>
+      <div class="dropzone" id="dz-req">
+        <input type="file" id="file-req" accept=".xlsx,.xls,.csv">
+        <div class="dz-label">Drop today's requirement file here</div>
+        <div class="dz-sub">Needs columns: <b>DC Code</b> and <b>Qty</b><br>Upload a fresh file each day</div>
+        <div class="dz-status" id="status-req"></div>
+      </div>
+      <div class="err" id="err-req"></div>
+      <br>
+      <button class="next-btn" id="generate-btn" disabled>Generate RM Pull List &rarr;</button>
+    </div>
+  </div>
+
+  <!-- TAB 3: Result -->
+  <div class="tab-pane" id="pane-result">
+    <div id="result-area" style="display:none;">
+      <div class="summary">
+        <div class="stat amber"><div class="num" id="s-dc">0</div><div class="lbl">DC Codes</div></div>
+        <div class="stat teal"><div class="num" id="s-rm">0</div><div class="lbl">RM Codes Required</div></div>
+        <div class="stat rust"><div class="num" id="s-miss">0</div><div class="lbl">DC Not In Master</div></div>
+      </div>
+
+      <div id="warn-box" class="warn-box" style="display:none;"></div>
+
+      <div class="panel" style="padding:16px;">
+        <div class="search-bar">
+          <input type="text" id="rm-search" placeholder="Search RM code...">
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>#</th><th>RM Code</th><th class="num-col">Total Qty Required</th></tr></thead>
+            <tbody id="body-rm"></tbody>
+          </table>
+        </div>
+        <div class="actions">
+          <button class="teal" id="export-btn">Download RM Pull List (CSV)</button>
+          <button class="secondary" id="copy-btn">Copy to Clipboard</button>
+        </div>
+        <div id="copy-confirm"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="signature">Upload master once &middot; Reuse daily with a fresh requirement file</div>
+</div>
+
+<script>
+let masterData = null, reqData = null, lastRm = [], lastUnmatched = [];
+
+function normH(h){ return String(h).trim().toLowerCase(); }
+function findCol(headers, candidates){
+  for(const c of candidates){
+    const idx = headers.findIndex(h => normH(h).includes(c));
+    if(idx!==-1) return idx;
+  }
+  return -1;
+}
+function findHeaderRow(rows, must){
+  for(let i=0;i<Math.min(rows.length,6);i++){
+    const t = rows[i].join('|').toLowerCase();
+    if(must.some(k=>t.includes(k))) return i;
+  }
+  return 0;
+}
+function parseFile(file, cb){
+  const r = new FileReader();
+  r.onload = e => {
+    try{
+      const wb = XLSX.read(e.target.result,{type:'binary'});
+      cb(null, XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]],{header:1,defval:''}));
+    }catch(err){cb(err);}
+  };
+  r.onerror = ()=>cb(new Error('Could not read file'));
+  r.readAsBinaryString(file);
+}
+
+// Tab switching
+document.querySelectorAll('.tab-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
+    document.querySelectorAll('.tab-pane').forEach(p=>p.classList.remove('active'));
+    btn.classList.add('active');
+    document.getElementById(btn.dataset.pane).classList.add('active');
+  });
+});
+function goToTab(pane){
+  document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
+  document.querySelectorAll('.tab-pane').forEach(p=>p.classList.remove('active'));
+  document.querySelector('[data-pane="'+pane+'"]').classList.add('active');
+  document.getElementById(pane).classList.add('active');
+}
+
+// Load master
+document.getElementById('file-master').addEventListener('change', e => {
+  if(!e.target.files[0]) return;
+  document.getElementById('err-master').textContent='';
+  parseFile(e.target.files[0], (err, rows) => {
+    if(err){ document.getElementById('err-master').textContent='Error reading file'; return; }
+    const hi = findHeaderRow(rows, ['dc','bom','item','raw']);
+    const headers = rows[hi];
+    const dcIdx = findCol(headers, ['item to produce','dc code','dc','item']);
+    const rmIdx = findCol(headers, ['raw material','rm code','rm']);
+    if(dcIdx===-1||rmIdx===-1){
+      document.getElementById('err-master').textContent='Cannot find DC Code / Raw Materials columns. Headers: '+headers.filter(Boolean).join(' | ');
+      return;
+    }
+    masterData={};
+    let count=0;
+    for(let i=hi+1;i<rows.length;i++){
+      const r=rows[i];
+      if(!r[dcIdx]) continue;
+      const dc=String(r[dcIdx]).trim().toLowerCase();
+      const rms=String(r[rmIdx]).split(',').map(s=>s.trim()).filter(Boolean);
+      if(dc&&rms.length){ masterData[dc]=rms; count++; }
+    }
+    document.getElementById('status-master').innerHTML='\u2713 '+count+' DC codes loaded';
+    document.getElementById('dz-master').classList.add('filled');
+    document.getElementById('icon-master').className='step-check';
+    document.getElementById('icon-master').textContent='\u2713';
+    document.getElementById('next-to-req').disabled=false;
+  });
+});
+
+document.getElementById('next-to-req').addEventListener('click', ()=>goToTab('pane-req'));
+
+// Load requirement
+document.getElementById('file-req').addEventListener('change', e => {
+  if(!e.target.files[0]) return;
+  document.getElementById('err-req').textContent='';
+  parseFile(e.target.files[0], (err, rows) => {
+    if(err){ document.getElementById('err-req').textContent='Error reading file'; return; }
+    const hi = findHeaderRow(rows, ['dc','sku','code','qty']);
+    const headers = rows[hi];
+    const dcIdx = findCol(headers, ['dc code','dc','sku','code','particular','item']);
+    const qtyIdx = findCol(headers, ['qty','quantity','required','pcs','pieces']);
+    if(dcIdx===-1||qtyIdx===-1){
+      document.getElementById('err-req').textContent='Cannot find DC Code / Qty columns. Headers: '+headers.filter(Boolean).join(' | ');
+      return;
+    }
+    reqData=[];
+    for(let i=hi+1;i<rows.length;i++){
+      const r=rows[i];
+      if(!r[dcIdx]) continue;
+      const dc=String(r[dcIdx]).trim();
+      const qty=parseFloat(r[qtyIdx])||0;
+      if(dc&&qty>0) reqData.push({dc,qty});
+    }
+    const total=reqData.reduce((s,r)=>s+r.qty,0);
+    document.getElementById('status-req').innerHTML='\u2713 '+reqData.length+' DC codes &middot; '+total.toLocaleString()+' total units';
+    document.getElementById('dz-req').classList.add('filled');
+    document.getElementById('icon-req').className='step-check';
+    document.getElementById('icon-req').textContent='\u2713';
+    document.getElementById('generate-btn').disabled=!masterData;
+  });
+});
+
+// Generate
+document.getElementById('generate-btn').addEventListener('click', ()=>{
+  const rmAgg={};
+  const unmatched=[];
+  reqData.forEach(({dc,qty})=>{
+    const key=dc.toLowerCase();
+    const rms=masterData[key];
+    if(!rms){ unmatched.push(dc); return; }
+    rms.forEach(rm=>{ rmAgg[rm]=(rmAgg[rm]||0)+qty; });
+  });
+
+  lastUnmatched=unmatched;
+  lastRm=Object.entries(rmAgg).map(([rm,qty])=>({rm,qty})).sort((a,b)=>b.qty-a.qty);
+
+  document.getElementById('s-dc').textContent=reqData.length;
+  document.getElementById('s-rm').textContent=lastRm.length;
+  document.getElementById('s-miss').textContent=unmatched.length;
+
+  const wb=document.getElementById('warn-box');
+  if(unmatched.length){
+    wb.style.display='block';
+    wb.innerHTML='<b>'+unmatched.length+' DC code(s) not found in master</b> &mdash; <button onclick="downloadUnmatched()" style="font-size:11px;padding:4px 10px;box-shadow:2px 2px 0 var(--ink);background:var(--rust);color:var(--chalk);border:none;cursor:pointer;font-family:inherit;font-weight:bold;text-transform:uppercase;letter-spacing:.5px;">Download List</button><br><span style="font-size:11px;margin-top:6px;display:block;">'+unmatched.join(', ')+'</span>';
+  } else {
+    wb.style.display='none';
+  }
+
+  renderRm(lastRm);
+  document.getElementById('result-area').style.display='block';
+  document.getElementById('icon-result').className='step-check';
+  document.getElementById('icon-result').textContent='\u2713';
+  goToTab('pane-result');
+});
+
+function renderRm(data){
+  const body=document.getElementById('body-rm');
+  body.innerHTML='';
+  if(!data.length){ body.innerHTML='<tr><td colspan="3" style="text-align:center;padding:24px;color:var(--ink-soft);">No RM codes found</td></tr>'; return; }
+  data.forEach((r,i)=>{
+    const tr=document.createElement('tr');
+    tr.innerHTML='<td style="color:var(--ink-soft);font-size:11px;">'+(i+1)+'</td><td><b>'+r.rm+'</b></td><td class="num-col">'+r.qty.toLocaleString()+'</td>';
+    body.appendChild(tr);
+  });
+}
+
+document.getElementById('rm-search').addEventListener('input', e=>{
+  const q=e.target.value.toLowerCase();
+  renderRm(q ? lastRm.filter(r=>r.rm.toLowerCase().includes(q)) : lastRm);
+});
+
+function getDateStr(){
+  const d=new Date(); const m=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  return d.getDate()+'-'+m[d.getMonth()]+'-'+d.getFullYear();
+}
+function getDateLabel(){
+  const d=new Date(); const m=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  return d.getDate()+' '+m[d.getMonth()]+' '+d.getFullYear();
+}
+
+function downloadCsv(csv, filename){
+  try{
+    const blob=new Blob([csv],{type:'text/csv'});
+    const url=URL.createObjectURL(blob);
+    const a=document.createElement('a'); a.href=url; a.download=filename;
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    setTimeout(()=>URL.revokeObjectURL(url),2000);
+  }catch(e){ alert('Download failed — use Copy instead.'); }
+}
+
+function downloadUnmatched(){
+  if(!lastUnmatched.length) return;
+  let csv='DC Codes Not Found in Master — '+getDateLabel()+'\nDC Code\n';
+  lastUnmatched.forEach(dc=>{ csv+=dc+'\n'; });
+  downloadCsv(csv, 'DC_Not_In_Master_'+getDateStr()+'.csv');
+}
+
+document.getElementById('export-btn').addEventListener('click', ()=>{
+  if(!lastRm.length) return;
+  let csv='RM Pull List — '+getDateLabel()+'\nRM Code,Total Qty Required\n';
+  lastRm.forEach(r=>{ csv+=r.rm+','+r.qty+'\n'; });
+  downloadCsv(csv, 'RM_Pull_List_'+getDateStr()+'.csv');
+});
+
+document.getElementById('copy-btn').addEventListener('click', ()=>{
+  if(!lastRm.length) return;
+  let csv='RM Code,Total Qty Required\n';
+  lastRm.forEach(r=>{ csv+=r.rm+','+r.qty+'\n'; });
+  let ok=false;
+  try{ if(navigator.clipboard){navigator.clipboard.writeText(csv);ok=true;} }catch(e){}
+  if(!ok){ try{const ta=document.createElement('textarea');ta.value=csv;document.body.appendChild(ta);ta.select();ok=document.execCommand('copy');document.body.removeChild(ta);}catch(e){} }
+  const el=document.getElementById('copy-confirm');
+  el.style.cssText='display:block;font-size:11px;color:var(--teal);font-weight:bold;margin-top:8px;';
+  el.textContent=ok?'\u2713 Copied — paste into Excel or Sheets':'Could not auto-copy — use Download instead.';
+});
+</script>
+</body>
+</html>
