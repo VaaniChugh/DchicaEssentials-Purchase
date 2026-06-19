@@ -86,19 +86,18 @@ var state = {
 };
 
 function getDefaultMonth(){
-  var d=new Date(); return (d.getMonth()+1)+"-"+d.getFullYear();
+  var d=new Date();
+  var months=["January","February","March","April","May","June","July","August","September","October","November","December"];
+  return months[d.getMonth()]+"-"+d.getFullYear();
 }
-function monthKeyToLabel(mk){
-  var p=mk.split("-"); return CAL_MONTHS[parseInt(p[0])-1]+" "+p[1];
-}
-function labelToKey(label){
-  var p=label.split(" "); var idx=CAL_MONTHS.indexOf(p[0]); return (idx+1)+"-"+p[1];
-}
+function monthKeyToLabel(mk){ return mk.replace("-"," "); }
 function getMonthOptions(){
-  var opts=[]; var d=new Date(); d.setMonth(d.getMonth()-2);
+  var opts=[]; var d=new Date();
+  var months=["January","February","March","April","May","June","July","August","September","October","November","December"];
+  d.setMonth(d.getMonth()-2);
   for(var i=0;i<8;i++){
-    var k=(d.getMonth()+1)+"-"+d.getFullYear();
-    opts.push(k); d.setMonth(d.getMonth()+1);
+    opts.push(months[d.getMonth()]+"-"+d.getFullYear());
+    d.setMonth(d.getMonth()+1);
   }
   return opts;
 }
