@@ -104,8 +104,26 @@ function getMonthOptions(){
 }
 
 function api(payload, cb){
-  var url=SCRIPT_URL+"?t="+Date.now();
-  fetch(url,{method:"POST",body:JSON.stringify(payload)})
+  var params = Object.keys(payload).map(function(k){
+    return encodeURIComponent(k)+'='+encodeURIComponent(typeof payload[k]==='object'?JSON.stringify(payload[k]):payload[k]);
+  }).join('&');
+  fetch(SCRIPT_URL, {
+    method:'POST',
+    mode:'no-cors',
+    headers:{'Content-Type':'application/x-www-form-urlencoded'},
+    body:params
+  }).then(function(){
+    // no-cors means we can't read the response — poll the sheet instead
+    cb(null,{ok:true});
+  }).catch(function(e){cb(e);});
+}
+
+function apiGet(payload, cb){
+  var params = Object.keys(payload).map(function(k){
+    return encodeURIComponent(k)+'='+encodeURIComponent(payload[k]);
+  }).join('&');
+  var url = SCRIPT_URL+'?'+params+'&t='+Date.now();
+  fetch(url, {method:'GET', mode:'cors'})
     .then(function(r){return r.json();})
     .then(function(d){cb(null,d);})
     .catch(function(e){cb(e);});
@@ -117,7 +135,7 @@ function setState(obj){
 
 function loadData(){
   setState({syncing:true,error:null});
-  api({action:"getData",monthKey:state.monthKey},function(err,d){
+  apiGet({action:'getData',monthKey:state.monthKey},function(err,d){
     if(err){setState({syncing:false,error:"Could not connect to sheet: "+err.message});return;}
     var bmap={};
     (d.budgets||[]).forEach(function(b){bmap[b.category]=parseFloat(b.amount)||0;});
@@ -128,10 +146,9 @@ function loadData(){
 function submitEntry(form){
   var entry={id:Date.now()+"",vendor:form.vendor,category:form.category,amount:parseFloat(form.amount),date:form.date,note:form.note,status:"pending",monthKey:state.monthKey};
   setState({syncing:true});
-  api({action:"addEntry",entry:entry},function(err){
+  api({action:"addEntry",entry:JSON.stringify(entry)},function(err){
     if(err){setState({syncing:false,error:err.message});return;}
-    loadData(); setState({syncing:false,syncOk:true,msg:"Request submitted!"});
-    setTimeout(function(){setState({msg:null});},3000);
+    setTimeout(function(){loadData();setState({msg:"Request submitted!"});setTimeout(function(){setState({msg:null});},3000);},1500);
   });
 }
 
@@ -139,8 +156,7 @@ function saveBudget(cat,amt){
   setState({syncing:true});
   api({action:"setBudget",monthKey:state.monthKey,category:cat,amount:amt},function(err){
     if(err){setState({syncing:false,error:err.message});return;}
-    loadData(); setState({syncing:false,msg:"Budget saved!"});
-    setTimeout(function(){setState({msg:null});},3000);
+    setTimeout(function(){loadData();setState({msg:"Budget saved!"});setTimeout(function(){setState({msg:null});},3000);},1500);
   });
 }
 
@@ -149,7 +165,7 @@ function updateStatus(id,status,reason){
   setState({syncing:true,rejectingId:null,rejectReason:""});
   api({action:"updateStatus",id:id,status:status,rejectReason:reason||""},function(err){
     if(err){setState({syncing:false,error:err.message});return;}
-    loadData(); setState({syncing:false,syncOk:true});
+    setTimeout(function(){loadData();},1500);
   });
 }
 
