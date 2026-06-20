@@ -232,7 +232,7 @@ function render(){
   else{
     html+='<table class="entry-table"><thead><tr><th>Vendor</th><th>Category</th><th>Amount</th><th>Date</th><th>Note</th><th>Status</th>'+(state.role==="accounts"?"<th>Action</th>":"")+'</tr></thead><tbody>';
     entries.forEach(function(e){
-      html+='<tr><td>'+e.vendor+'</td><td>'+e.category+'</td><td>₹'+parseFloat(e.amount||0).toLocaleString('en-IN')+'</td><td>'+(e.date||"")+'</td><td>'+(e.note||"—")+'</td><td><span class="badge badge-'+e.status+'">'+e.status+'</span>'+(e.rejectReason?'<br><span style="font-size:11px;color:#888;">'+e.rejectReason+'</span>':"")+'</td>';
+      html+='<tr><td>'+e.vendor+'</td><td>'+e.category+'</td><td>₹'+parseFloat(e.amount||0).toLocaleString('en-IN')+'</td><td>'+(e.date ? new Date(e.date).toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric'}) : "")+'</td><td>'+(e.note||"—")+'</td><td><span class="badge badge-'+e.status+'">'+e.status+'</span>'+(e.rejectReason?'<br><span style="font-size:11px;color:#888;">'+e.rejectReason+'</span>':"")+'</td>';
       if(state.role==="accounts"&&e.status==="pending"){
         html+='<td><button class="btn btn-green btn-small" onclick="updateStatus(\''+e.id+'\',\'approved\',\'\')">Approve</button> ';
         if(state.rejectingId===e.id){
@@ -253,7 +253,7 @@ function render(){
   CATEGORIES.forEach(function(c){ html+='<th>'+c+'</th>'; });
   html+='<th>Total Budget</th><th>Total Spent</th><th>Remaining</th></tr></thead><tbody>';
 
-  // get all unique months from entries + current month
+  // get all unique months from entries + always include current month
   var allMonths={};
   allMonths[state.monthKey]=true;
   (state.entries||[]).forEach(function(e){ if(e.monthKey) allMonths[e.monthKey]=true; });
@@ -272,8 +272,7 @@ function render(){
     html+='<tr><td><b>'+mk.replace("-"," ")+'</b></td>';
     CATEGORIES.forEach(function(cat){
       // budget for this month/cat — use current budgets only for current month
-      var bud=0;
-      if(mk===state.monthKey){ bud=state.budgets[cat]||0; }
+      var bud=state.budgets[cat]||0; // budgets always loaded for current month; historical months show spend only
       var spent=(state.entries||[]).filter(function(e){ return e.category===cat&&e.status==="approved"&&e.monthKey===mk; }).reduce(function(s,e){ return s+parseFloat(e.amount||0); },0);
       rowBudgetTotal+=bud; rowSpentTotal+=spent;
       html+='<td style="font-size:11px;">₹'+spent.toLocaleString('en-IN')+(bud>0?'<br><span style="color:#888">of ₹'+bud.toLocaleString('en-IN')+'</span>':'')+'</td>';
