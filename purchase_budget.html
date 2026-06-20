@@ -247,6 +247,41 @@ function render(){
     html+='</tbody></table>';
   }
 
+  // Monthly Summary Table
+  html+='<div class="section-title">Monthly Summary</div>';
+  html+='<table class="summary-table"><thead><tr><th>Month</th>';
+  CATEGORIES.forEach(function(c){ html+='<th>'+c+'</th>'; });
+  html+='<th>Total Budget</th><th>Total Spent</th><th>Remaining</th></tr></thead><tbody>';
+
+  // get all unique months from entries + current month
+  var allMonths={};
+  allMonths[state.monthKey]=true;
+  (state.entries||[]).forEach(function(e){ if(e.monthKey) allMonths[e.monthKey]=true; });
+  var CAL_MONTHS_ORDER=["January","February","March","April","May","June","July","August","September","October","November","December"];
+
+  // sort months
+  var sortedMonths=Object.keys(allMonths).sort(function(a,b){
+    var pa=a.split("-"); var pb=b.split("-");
+    var ya=parseInt(pa[1]||0); var yb=parseInt(pb[1]||0);
+    var ma=CAL_MONTHS_ORDER.indexOf(pa[0]); var mb=CAL_MONTHS_ORDER.indexOf(pb[0]);
+    return ya!==yb ? ya-yb : ma-mb;
+  });
+
+  sortedMonths.forEach(function(mk){
+    var rowBudgetTotal=0; var rowSpentTotal=0;
+    html+='<tr><td><b>'+mk.replace("-"," ")+'</b></td>';
+    CATEGORIES.forEach(function(cat){
+      // budget for this month/cat — use current budgets only for current month
+      var bud=0;
+      if(mk===state.monthKey){ bud=state.budgets[cat]||0; }
+      var spent=(state.entries||[]).filter(function(e){ return e.category===cat&&e.status==="approved"&&e.monthKey===mk; }).reduce(function(s,e){ return s+parseFloat(e.amount||0); },0);
+      rowBudgetTotal+=bud; rowSpentTotal+=spent;
+      html+='<td style="font-size:11px;">₹'+spent.toLocaleString('en-IN')+(bud>0?'<br><span style="color:#888">of ₹'+bud.toLocaleString('en-IN')+'</span>':'')+'</td>';
+    });
+    html+='<td>₹'+rowBudgetTotal.toLocaleString('en-IN')+'</td><td>₹'+rowSpentTotal.toLocaleString('en-IN')+'</td><td style="color:'+(rowBudgetTotal-rowSpentTotal<0?'#c62828':'#2e7d32')+'">₹'+(rowBudgetTotal-rowSpentTotal).toLocaleString('en-IN')+'</td></tr>';
+  });
+  html+='</tbody></table>';
+
   app.innerHTML=html;
 }
 
