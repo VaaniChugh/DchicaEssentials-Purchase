@@ -1,0 +1,510 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Cutting Benchmark — D'Chica</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+  :root{
+    --paper:#e9e1cd;--paper-dark:#dcd1b6;--ink:#23231f;--ink-soft:#5a5648;
+    --chalk:#fbf8ef;--rust:#a3402b;--rust-bg:#f1ddd5;
+    --amber:#a87a1e;--amber-bg:#f1e6cd;
+    --teal:#2f5d52;--teal-bg:#dde9e3;
+    --green:#2a5c3f;--green-bg:#d9ead3;
+    --purple:#4a235a;--purple-bg:#ead5f5;
+    --line:#23231f33;
+  }
+  *{box-sizing:border-box;margin:0;padding:0;}
+  body{background:var(--paper);background-image:linear-gradient(var(--line) 1px,transparent 1px),linear-gradient(90deg,var(--line) 1px,transparent 1px);background-size:28px 28px;color:var(--ink);font-family:'Courier New',ui-monospace,monospace;min-height:100vh;padding:24px 16px 60px;}
+  .wrap{max-width:1200px;margin:0 auto;}
+  header{display:flex;justify-content:space-between;align-items:flex-end;flex-wrap:wrap;gap:12px;border-bottom:3px solid var(--ink);padding-bottom:14px;margin-bottom:22px;}
+  h1{font-family:'Arial Black',Impact,sans-serif;font-weight:900;font-size:clamp(20px,4vw,34px);margin:0;text-transform:uppercase;}
+  h1 span{color:var(--amber);}
+  .tag{background:var(--ink);color:var(--chalk);font-size:11px;letter-spacing:1px;text-transform:uppercase;padding:5px 10px;transform:rotate(-1deg);white-space:nowrap;}
+  .build{font-size:10px;color:var(--ink-soft);margin-top:4px;letter-spacing:.5px;text-align:right;}
+  .panel{background:var(--chalk);border:1px solid var(--ink);box-shadow:4px 4px 0 var(--ink);padding:20px;margin-bottom:22px;}
+  .panel h2{font-family:'Arial Black',Impact,sans-serif;text-transform:uppercase;font-size:14px;letter-spacing:1px;margin:0 0 14px;display:flex;align-items:center;gap:8px;}
+  .stepnum{background:var(--ink);color:var(--chalk);width:22px;height:22px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;font-size:12px;}
+  .dropzone{border:2px dashed var(--ink-soft);padding:28px 16px;text-align:center;background:var(--paper);cursor:pointer;transition:.15s;position:relative;max-width:480px;}
+  .dropzone:hover{border-color:var(--amber);}
+  .dropzone.filled{border-style:solid;border-color:var(--teal);background:var(--teal-bg);}
+  .dropzone input{position:absolute;inset:0;opacity:0;cursor:pointer;}
+  .dz-label{font-weight:bold;font-size:13px;text-transform:uppercase;letter-spacing:.5px;}
+  .dz-sub{font-size:11px;color:var(--ink-soft);margin-top:5px;line-height:1.6;}
+  .dz-status{font-size:12px;margin-top:8px;color:var(--teal);font-weight:bold;line-height:1.4;}
+  .lot-row{display:flex;gap:12px;align-items:center;margin-top:14px;flex-wrap:wrap;font-size:12px;}
+  .lot-row label{font-weight:bold;text-transform:uppercase;letter-spacing:.5px;}
+  .lot-row input{font-family:inherit;font-size:12px;border:1px solid var(--ink);padding:5px 8px;background:var(--chalk);width:200px;}
+  .tol-row{display:flex;gap:12px;align-items:center;margin-top:10px;font-size:12px;}
+  .tol-row label{font-weight:bold;text-transform:uppercase;letter-spacing:.5px;}
+  .tol-row input[type=number]{font-family:inherit;font-size:12px;border:1px solid var(--ink);padding:5px 8px;background:var(--chalk);width:70px;}
+  .controls{margin-top:18px;}
+  button{font-family:'Arial Black',Impact,sans-serif;text-transform:uppercase;letter-spacing:.5px;font-size:13px;background:var(--amber);color:var(--chalk);border:none;padding:12px 22px;cursor:pointer;box-shadow:3px 3px 0 var(--ink);}
+  button:active{transform:translate(2px,2px);box-shadow:1px 1px 0 var(--ink);}
+  button:disabled{background:#bbb;cursor:not-allowed;box-shadow:none;}
+  button.teal{background:var(--teal);}
+  button.secondary{background:var(--ink-soft);}
+  button.rust{background:var(--rust);}
+  .summary{display:grid;grid-template-columns:repeat(5,1fr);gap:10px;margin-bottom:18px;}
+  @media(max-width:700px){.summary{grid-template-columns:repeat(2,1fr);}}
+  .stat{background:var(--chalk);border:1px solid var(--ink);padding:12px;text-align:center;}
+  .stat .num{font-size:22px;font-weight:bold;font-family:Georgia,serif;}
+  .stat .lbl{font-size:10px;text-transform:uppercase;letter-spacing:.5px;color:var(--ink-soft);margin-top:4px;}
+  .stat.amber .num{color:var(--amber);}
+  .stat.rust .num{color:var(--rust);}
+  .stat.teal .num{color:var(--teal);}
+  .stat.purple .num{color:var(--purple);}
+  .tabs{display:flex;border-bottom:2px solid var(--ink);margin-bottom:0;}
+  .tab{padding:10px 18px;font-size:11px;font-family:'Arial Black',Impact,sans-serif;text-transform:uppercase;letter-spacing:.5px;cursor:pointer;border:1px solid var(--ink);border-bottom:none;background:var(--paper);margin-right:4px;}
+  .tab.active{background:var(--chalk);position:relative;bottom:-2px;border-bottom:2px solid var(--chalk);}
+  .tab-content{display:none;background:var(--chalk);padding:14px;}
+  .tab-content.active{display:block;}
+  .search-row{display:flex;gap:10px;margin-bottom:12px;flex-wrap:wrap;}
+  .search-row input,.search-row select{font-family:inherit;font-size:12px;border:1px solid var(--ink);padding:6px 10px;background:var(--chalk);}
+  .search-row input{flex:1;min-width:160px;}
+  table{width:100%;border-collapse:collapse;font-size:12px;}
+  th,td{border:1px solid var(--line);padding:6px 8px;text-align:left;}
+  th{background:var(--ink);color:var(--chalk);text-transform:uppercase;font-size:10px;letter-spacing:.5px;position:sticky;top:0;}
+  tr:nth-child(even){background:var(--paper-dark);}
+  .num-col{text-align:right;}
+  .table-wrap{max-height:500px;overflow:auto;border:1px solid var(--ink);}
+  .pill{display:inline-block;padding:2px 7px;font-size:10px;text-transform:uppercase;letter-spacing:.5px;font-weight:bold;}
+  .pill.cut{background:var(--teal-bg);color:var(--teal);}
+  .pill.overstock{background:var(--rust-bg);color:var(--rust);}
+  .pill.ok{background:var(--green-bg);color:var(--green);}
+  .pill.zero{background:#eee;color:#999;}
+  .foot-actions{display:flex;justify-content:space-between;align-items:center;margin-top:14px;flex-wrap:wrap;gap:10px;}
+  .err{color:var(--rust);font-size:12px;margin-top:6px;}
+  #copy-confirm{font-size:11px;color:var(--teal);font-weight:bold;margin-top:8px;display:none;}
+  .info-box{background:var(--amber-bg);border:1px solid var(--amber);padding:10px 14px;font-size:11px;line-height:1.7;margin-bottom:14px;}
+  .signature{text-align:center;font-size:11px;color:var(--ink-soft);margin-top:30px;letter-spacing:1px;text-transform:uppercase;}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>Cutting <span>Benchmark</span></h1>
+    <div>
+      <div class="tag">Production Planning &middot; Lot-Size Optimiser</div>
+      <div class="build">BUILD 2026-06-24 &middot; v1</div>
+    </div>
+  </header>
+
+  <div class="panel">
+    <h2><span class="stepnum">1</span> Upload data &amp; configure lot sizes</h2>
+    <div class="info-box">
+      Upload the sheet with <b>Closing Stock, April/May/June Outward</b> data.<br>
+      Required columns: <b>SKU (Particulars), Closing Stock, April Outward, May Outward, June Outward</b><br>
+      June will be normalised to 30 days automatically. Daily rate = 3-month average &divide; 30.
+    </div>
+    <div class="dropzone" id="dz-main">
+      <input type="file" id="file-main" accept=".xlsx,.xls,.csv">
+      <div class="dz-label">Drop your Outward + Closing Stock file here</div>
+      <div class="dz-sub">Accepts the standard monthly outward sheet with closing stock column</div>
+      <div class="dz-status" id="status-main"></div>
+    </div>
+    <br>
+    <div class="dropzone" id="dz-today">
+      <input type="file" id="file-today" accept=".xlsx,.xls,.csv">
+      <div class="dz-label">Today's Requirement (optional)</div>
+      <div class="dz-sub">Needs: <b>SKU Code, Today's Requirement</b><br>If uploaded, shows as a separate column in the output</div>
+      <div class="dz-status" id="status-today"></div>
+    </div>
+    <div class="lot-row">
+      <label>Lot Sizes:</label>
+      <input type="text" id="lot-sizes" value="10, 20, 50, 80, 100" placeholder="e.g. 10, 20, 50, 80, 100">
+    </div>
+    <div class="tol-row">
+      <label>Tolerance (round down if within):</label>
+      <input type="number" id="tolerance" value="10" min="0" max="50"> %
+    </div>
+    <div class="controls">
+      <button id="run-btn" disabled>Generate Benchmark</button>
+    </div>
+    <div class="err" id="err-msg"></div>
+  </div>
+
+  <div id="results" style="display:none;">
+    <div class="summary">
+      <div class="stat teal"><div class="num" id="s-total">0</div><div class="lbl">Total SKUs</div></div>
+      <div class="stat amber"><div class="num" id="s-cut">0</div><div class="lbl">SKUs to Cut</div></div>
+      <div class="stat rust"><div class="num" id="s-overstock">0</div><div class="lbl">Overstocked &gt;15d</div></div>
+      <div class="stat teal"><div class="num" id="s-min-units">0</div><div class="lbl">Min Cut (7d)</div></div>
+      <div class="stat amber"><div class="num" id="s-max-units">0</div><div class="lbl">Max Cut (15d)</div></div>
+    </div>
+
+    <div class="panel" style="padding:0;">
+      <div class="tabs">
+        <div class="tab active" data-tab="all">All SKUs</div>
+        <div class="tab" data-tab="cut">Cut List</div>
+        <div class="tab" data-tab="overstock">Overstock Alert</div>
+      </div>
+
+      <div class="tab-content active" id="tab-all">
+        <div class="search-row">
+          <input type="text" id="search-all" placeholder="Search SKU or item name...">
+          <select id="filter-all">
+            <option value="all">All</option>
+            <option value="cut">Cut needed</option>
+            <option value="overstock">Overstocked</option>
+            <option value="ok">OK — no action</option>
+          </select>
+        </div>
+        <div class="table-wrap"><table>
+          <thead><tr>
+            <th>SKU</th><th>Item Name</th>
+            <th class="num-col">Closing Stock</th>
+            <th class="num-col">Daily Rate</th>
+            <th class="num-col">Stock Cover (days)</th>
+            <th class="num-col">Today's Req</th>
+            <th class="num-col">Min Cut (7d lot)</th>
+            <th class="num-col">Max Cut (15d lot)</th>
+            <th>Status</th>
+          </tr></thead>
+          <tbody id="body-all"></tbody>
+        </table></div>
+      </div>
+
+      <div class="tab-content" id="tab-cut">
+        <div class="search-row"><input type="text" id="search-cut" placeholder="Search..."></div>
+        <div class="table-wrap"><table>
+          <thead><tr>
+            <th>SKU</th><th>Item Name</th>
+            <th class="num-col">Closing Stock</th>
+            <th class="num-col">Daily Rate</th>
+            <th class="num-col">Today's Req</th>
+            <th class="num-col">7d Demand</th>
+            <th class="num-col">Net 7d Need</th>
+            <th class="num-col">Min Cut (lot)</th>
+            <th class="num-col">15d Demand</th>
+            <th class="num-col">Net 15d Need</th>
+            <th class="num-col">Max Cut (lot)</th>
+          </tr></thead>
+          <tbody id="body-cut"></tbody>
+        </table></div>
+      </div>
+
+      <div class="tab-content" id="tab-overstock">
+        <div class="info-box" style="margin-bottom:12px;">These SKUs have more than 15 days of stock on hand. <b>Do not cut.</b> Prioritise selling through existing stock first.</div>
+        <div class="search-row"><input type="text" id="search-over" placeholder="Search..."></div>
+        <div class="table-wrap"><table>
+          <thead><tr>
+            <th>SKU</th><th>Item Name</th>
+            <th class="num-col">Closing Stock</th>
+            <th class="num-col">Daily Rate</th>
+            <th class="num-col">Stock Cover (days)</th>
+            <th class="num-col">Excess Units (beyond 15d)</th>
+          </tr></thead>
+          <tbody id="body-over"></tbody>
+        </table></div>
+      </div>
+
+      <div style="padding:0 14px 14px;border-top:1px solid var(--line);padding-top:14px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;">
+        <span id="result-note" style="font-size:11px;color:var(--ink-soft);"></span>
+        <div style="display:flex;gap:10px;flex-wrap:wrap;">
+          <button class="secondary" id="copy-btn">Copy Cut List</button>
+          <button class="teal" id="export-cut-btn">Download Cut List</button>
+          <button class="rust" id="export-overstock-btn">Download Overstock Alert</button>
+          <button id="export-full-btn">Download Full Benchmark</button>
+        </div>
+      </div>
+      <div id="copy-confirm" style="padding:0 14px 10px;"></div>
+    </div>
+  </div>
+
+  <div class="signature">Min = 7-day demand in nearest lot &middot; Max = 15-day demand in nearest lot &middot; 10% tolerance on rounding down</div>
+</div>
+
+<script>
+let lastResults=[], lastAll=[], todayReqData={};
+
+function normH(h){ return String(h).trim().toLowerCase(); }
+function findCol(headers, candidates){
+  for(const c of candidates){
+    const idx=headers.findIndex(h=>normH(h).includes(c));
+    if(idx!==-1) return idx;
+  }
+  return -1;
+}
+function findHeaderRow(rows, must){
+  for(let i=0;i<Math.min(rows.length,5);i++){
+    const t=rows[i].join('|').toLowerCase();
+    if(must.some(k=>t.includes(k))) return i;
+  }
+  return 0;
+}
+function parseFile(file, cb){
+  const reader=new FileReader();
+  reader.onload=e=>{
+    try{
+      const wb=XLSX.read(e.target.result,{type:'binary'});
+      cb(null,XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]],{header:1,defval:''}));
+    }catch(err){cb(err);}
+  };
+  reader.onerror=()=>cb(new Error('Could not read file'));
+  reader.readAsBinaryString(file);
+}
+
+function snapToLot(x, lots, tolerance){
+  if(x<=0) return 0;
+  const tol = tolerance/100;
+  // find smallest lot that covers x OR is within tolerance% below x
+  for(const lot of [...lots].sort((a,b)=>a-b)){
+    if(lot>=x) return lot;
+    if((x-lot)/x<=tol) return lot;
+  }
+  // x > max lot: use multiples of the largest lot
+  const maxLot=Math.max(...lots);
+  const mult=Math.ceil(x/maxLot);
+  const lower=(mult-1)*maxLot;
+  if(lower>0 && (x-lower)/x<=tol) return lower;
+  return mult*maxLot;
+}
+
+document.getElementById('file-main').addEventListener('change',e=>{
+  if(!e.target.files[0]) return;
+  document.getElementById('err-msg').textContent='';
+  parseFile(e.target.files[0],(err,rows)=>{
+    if(err){document.getElementById('status-main').textContent='Error reading file';return;}
+    const hi=findHeaderRow(rows,['particular','sku','closing','outward','outword']);
+    const headers=rows[hi];
+    const skuIdx=findCol(headers,['particular','sku','rm code','item code']);
+    const nameIdx=findCol(headers,['item name','item','name']);
+    const closingIdx=findCol(headers,['closing']);
+    const aprIdx=findCol(headers,['april outword','april outward','april']);
+    const mayIdx=findCol(headers,['may outword','may outward','may']);
+    const junIdx=findCol(headers,['june outword','june outward','june']);
+    if(skuIdx===-1||closingIdx===-1){
+      document.getElementById('err-msg').textContent='Cannot find SKU / Closing columns. Headers: '+headers.filter(Boolean).join(' | ');
+      return;
+    }
+    if(aprIdx===-1||mayIdx===-1||junIdx===-1){
+      document.getElementById('err-msg').textContent='Cannot find April / May / June outward columns. Headers: '+headers.filter(Boolean).join(' | ');
+      return;
+    }
+
+    const rawData=[];
+    for(let i=hi+1;i<rows.length;i++){
+      const r=rows[i];
+      const sku=String(r[skuIdx]||'').trim();
+      if(!sku||!sku.match(/^R[A-Za-z]/)) continue;
+      const closing=parseFloat(r[closingIdx])||0;
+      const aprOut=parseFloat(r[aprIdx])||0;
+      const mayOut=parseFloat(r[mayIdx])||0;
+      const junOut=parseFloat(r[junIdx])||0;
+      const name=nameIdx!==-1?String(r[nameIdx]).trim():'';
+      rawData.push({sku,name,closing,aprOut,mayOut,junOut});
+    }
+    window._rawData=rawData;
+    document.getElementById('status-main').innerHTML='\u2713 '+rawData.length+' SKUs loaded';
+    document.getElementById('dz-main').classList.add('filled');
+    document.getElementById('run-btn').disabled=false;
+  });
+});
+
+document.getElementById('file-today').addEventListener('change',e=>{
+  if(!e.target.files[0]) return;
+  parseFile(e.target.files[0],(err,rows)=>{
+    if(err){document.getElementById('status-today').textContent='Error reading file';return;}
+    const hi=findHeaderRow(rows,['sku','particular','today','requirement','qty']);
+    const headers=rows[hi];
+    const skuIdx=findCol(headers,['sku code','sku','particular','rm code']);
+    const qtyIdx=findCol(headers,["today's requirement","today","requirement","qty","quantity","pcs"]);
+    if(skuIdx===-1||qtyIdx===-1){
+      document.getElementById('err-msg').textContent="Today's file: need SKU / Qty columns. Found: "+headers.filter(Boolean).join(' | ');
+      return;
+    }
+    todayReqData={};
+    let count=0, total=0;
+    for(let i=hi+1;i<rows.length;i++){
+      const r=rows[i];
+      if(!r[skuIdx]) continue;
+      const sku=String(r[skuIdx]).trim();
+      const qty=parseFloat(r[qtyIdx])||0;
+      if(sku&&qty>0){ todayReqData[sku]=qty; count++; total+=qty; }
+    }
+    document.getElementById('status-today').innerHTML='\u2713 '+count+' SKUs \u00b7 '+total.toLocaleString()+' units';
+    document.getElementById('dz-today').classList.add('filled');
+  });
+});
+
+document.getElementById('run-btn').addEventListener('click',()=>{
+  document.getElementById('err-msg').textContent='';
+  const lots=document.getElementById('lot-sizes').value.split(',').map(s=>parseFloat(s.trim())).filter(n=>n>0).sort((a,b)=>a-b);
+  const tolerance=parseFloat(document.getElementById('tolerance').value)||10;
+  if(!lots.length){document.getElementById('err-msg').textContent='Please enter at least one lot size.';return;}
+  const rawData=window._rawData||[];
+  const results=[];
+  let cutCount=0,overstockCount=0,minTotal=0,maxTotal=0;
+
+  rawData.forEach(d=>{
+    const junNorm=d.junOut*(30/22);
+    const avgMonthly=(d.aprOut+d.mayOut+junNorm)/3;
+    const dailyRate=avgMonthly/30;
+    const stockDays=dailyRate>0?Math.round(d.closing/dailyRate):999;
+    const demand7=dailyRate*7;
+    const demand15=dailyRate*15;
+    const net7=Math.max(0,demand7-d.closing);
+    const net15=Math.max(0,demand15-d.closing);
+    const benchMin=snapToLot(net7,lots,tolerance);
+    const benchMax=snapToLot(net15,lots,tolerance);
+    const isOverstock=stockDays>15;
+    const needsCut=benchMin>0;
+    const excessUnits=isOverstock?Math.round(d.closing-demand15):0;
+    let status=isOverstock?'overstock':needsCut?'cut':'ok';
+    if(needsCut) cutCount++;
+    if(isOverstock) overstockCount++;
+    minTotal+=benchMin;
+    maxTotal+=benchMax;
+    results.push({sku:d.sku,name:d.name,closing:d.closing,dailyRate:Math.round(dailyRate*10)/10,stockDays,demand7:Math.round(demand7),demand15:Math.round(demand15),net7:Math.round(net7),net15:Math.round(net15),benchMin,benchMax,isOverstock,needsCut,excessUnits,status,todayReq:todayReqData[d.sku]||0});
+  });
+
+  results.sort((a,b)=>{
+    const o={overstock:0,cut:1,ok:2};
+    return o[a.status]-o[b.status]||b.benchMin-a.benchMin;
+  });
+  lastResults=results;
+  lastAll=results;
+
+  document.getElementById('s-total').textContent=results.length;
+  document.getElementById('s-cut').textContent=cutCount;
+  document.getElementById('s-overstock').textContent=overstockCount;
+  document.getElementById('s-min-units').textContent=minTotal.toLocaleString();
+  document.getElementById('s-max-units').textContent=maxTotal.toLocaleString();
+
+  const d=new Date();const m=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  document.getElementById('result-note').textContent='Generated '+d.getDate()+' '+m[d.getMonth()]+' '+d.getFullYear()+' \u00b7 Lots: '+lots.join(', ')+' \u00b7 Tolerance: '+tolerance+'%';
+  document.getElementById('results').style.display='block';
+  document.getElementById('copy-confirm').style.display='none';
+  renderAll(results);
+  renderCut(results.filter(r=>r.needsCut));
+  renderOver(results.filter(r=>r.isOverstock));
+});
+
+function pillHtml(status){
+  const labels={cut:'Cut Needed',overstock:'Overstock \u2014 Skip',ok:'OK',zero:'No Demand'};
+  return `<span class="pill ${status}">${labels[status]||status}</span>`;
+}
+
+function renderAll(data){
+  const body=document.getElementById('body-all');
+  body.innerHTML='';
+  data.forEach(r=>{
+    const tr=document.createElement('tr');
+    if(r.status==='ok') tr.style.color='#aaa';
+    const coverText=r.stockDays>=999?'No demand':r.stockDays+'d';
+    tr.innerHTML=`<td>${r.sku}</td><td>${r.name}</td><td class="num-col">${r.closing}</td><td class="num-col">${r.dailyRate}</td><td class="num-col" style="${r.isOverstock?'color:var(--rust);font-weight:bold;':''}">${coverText}</td><td class="num-col" style="${r.todayReq>0?'background:#fff9e6;font-weight:bold;':''}">${r.todayReq||'\u2014'}</td><td class="num-col" style="${r.benchMin>0?'color:var(--teal);font-weight:bold;':''}">${r.benchMin||'\u2014'}</td><td class="num-col">${r.benchMax||'\u2014'}</td><td>${pillHtml(r.status)}</td>`;
+    body.appendChild(tr);
+  });
+}
+
+function renderCut(data){
+  const body=document.getElementById('body-cut');
+  body.innerHTML='';
+  if(!data.length){body.innerHTML='<tr><td colspan="10" style="text-align:center;padding:24px;color:var(--ink-soft);">No SKUs need cutting</td></tr>';return;}
+  data.forEach(r=>{
+    const tr=document.createElement('tr');
+    tr.innerHTML=`<td>${r.sku}</td><td>${r.name}</td><td class="num-col">${r.closing}</td><td class="num-col">${r.dailyRate}</td><td class="num-col" style="${r.todayReq>0?'background:#fff9e6;font-weight:bold;':''}">${r.todayReq||'\u2014'}</td><td class="num-col">${r.demand7}</td><td class="num-col">${r.net7}</td><td class="num-col" style="color:var(--teal);font-weight:bold;">${r.benchMin}</td><td class="num-col">${r.demand15}</td><td class="num-col">${r.net15}</td><td class="num-col" style="color:var(--amber);font-weight:bold;">${r.benchMax}</td>`;
+    body.appendChild(tr);
+  });
+}
+
+function renderOver(data){
+  const body=document.getElementById('body-over');
+  body.innerHTML='';
+  if(!data.length){body.innerHTML='<tr><td colspan="6" style="text-align:center;padding:24px;color:var(--ink-soft);">No overstocked SKUs</td></tr>';return;}
+  data.sort((a,b)=>b.stockDays-a.stockDays).forEach(r=>{
+    const tr=document.createElement('tr');
+    tr.innerHTML=`<td>${r.sku}</td><td>${r.name}</td><td class="num-col">${r.closing}</td><td class="num-col">${r.dailyRate}</td><td class="num-col" style="color:var(--rust);font-weight:bold;">${r.stockDays>=999?'No demand':r.stockDays+'d'}</td><td class="num-col" style="color:var(--rust);">${r.excessUnits>0?r.excessUnits:'\u2014'}</td>`;
+    body.appendChild(tr);
+  });
+}
+
+// Tabs
+document.querySelectorAll('.tab').forEach(tab=>{
+  tab.addEventListener('click',()=>{
+    document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+    document.querySelectorAll('.tab-content').forEach(t=>t.classList.remove('active'));
+    tab.classList.add('active');
+    document.getElementById('tab-'+tab.dataset.tab).classList.add('active');
+  });
+});
+
+// Search
+document.getElementById('search-all').addEventListener('input',e=>{
+  const q=e.target.value.toLowerCase();
+  const f=document.getElementById('filter-all').value;
+  renderAll(lastAll.filter(r=>{
+    const mq=!q||(r.sku.toLowerCase().includes(q)||r.name.toLowerCase().includes(q));
+    const mf=f==='all'||r.status===f;
+    return mq&&mf;
+  }));
+});
+document.getElementById('filter-all').addEventListener('change',()=>{document.getElementById('search-all').dispatchEvent(new Event('input'));});
+document.getElementById('search-cut').addEventListener('input',e=>{
+  const q=e.target.value.toLowerCase();
+  renderCut(lastAll.filter(r=>r.needsCut&&(!q||(r.sku.toLowerCase().includes(q)||r.name.toLowerCase().includes(q)))));
+});
+document.getElementById('search-over').addEventListener('input',e=>{
+  const q=e.target.value.toLowerCase();
+  renderOver(lastAll.filter(r=>r.isOverstock&&(!q||(r.sku.toLowerCase().includes(q)||r.name.toLowerCase().includes(q)))));
+});
+
+function getDateStr(){const d=new Date();const m=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];return d.getDate()+'-'+m[d.getMonth()]+'-'+d.getFullYear();}
+
+function buildCsv(data, cols, header){
+  const d=new Date();const m=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  let csv=header+' \u2014 '+d.getDate()+' '+m[d.getMonth()]+' '+d.getFullYear()+'\n'+cols.join(',')+'\n';
+  data.forEach(r=>{ csv+=cols.map(c=>typeof r[c]==='string'?`"${r[c]}"`:r[c]).join(',')+'\n'; });
+  return csv;
+}
+
+function downloadCsv(csv, filename){
+  try{
+    const blob=new Blob([csv],{type:'text/csv'});
+    const url=URL.createObjectURL(blob);
+    const a=document.createElement('a');a.href=url;a.download=filename;
+    document.body.appendChild(a);a.click();document.body.removeChild(a);
+    setTimeout(()=>URL.revokeObjectURL(url),2000);
+  }catch(e){document.getElementById('err-msg').textContent='Download failed — use Copy instead.';}
+}
+
+document.getElementById('export-cut-btn').addEventListener('click',()=>{
+  const data=lastAll.filter(r=>r.needsCut);
+  if(!data.length) return;
+  let csv=`Cut List \u2014 ${getDateStr()}\nSKU,Item Name,Closing Stock,Daily Rate,Today's Requirement,7d Demand,Net 7d Need,Min Cut (lot),15d Demand,Net 15d Need,Max Cut (lot)\n`;
+  data.forEach(r=>{ csv+=`${r.sku},"${r.name}",${r.closing},${r.dailyRate},${r.todayReq||0},${r.demand7},${r.net7},${r.benchMin},${r.demand15},${r.net15},${r.benchMax}\n`; });
+  downloadCsv(csv,'Cut_List_'+getDateStr()+'.csv');
+});
+
+document.getElementById('export-overstock-btn').addEventListener('click',()=>{
+  const data=lastAll.filter(r=>r.isOverstock);
+  if(!data.length) return;
+  let csv=`Overstock Alert \u2014 ${getDateStr()}\nSKU,Item Name,Closing Stock,Daily Rate,Stock Cover (days),Excess Units (beyond 15d)\n`;
+  data.sort((a,b)=>b.stockDays-a.stockDays).forEach(r=>{ csv+=`${r.sku},"${r.name}",${r.closing},${r.dailyRate},${r.stockDays>=999?'No demand':r.stockDays},${r.excessUnits}\n`; });
+  downloadCsv(csv,'Overstock_Alert_'+getDateStr()+'.csv');
+});
+
+document.getElementById('export-full-btn').addEventListener('click',()=>{
+  if(!lastAll.length) return;
+  let csv=`Full Benchmark \u2014 ${getDateStr()}\nSKU,Item Name,Closing Stock,Daily Rate,Stock Cover (days),Today's Requirement,7d Demand,Net 7d Need,Min Cut (lot),15d Demand,Net 15d Need,Max Cut (lot),Status\n`;
+  lastAll.forEach(r=>{ csv+=`${r.sku},"${r.name}",${r.closing},${r.dailyRate},${r.stockDays>=999?'No demand':r.stockDays},${r.todayReq||0},${r.demand7},${r.net7},${r.benchMin},${r.demand15},${r.net15},${r.benchMax},${r.status}\n`; });
+  downloadCsv(csv,'Full_Benchmark_'+getDateStr()+'.csv');
+});
+
+document.getElementById('copy-btn').addEventListener('click',()=>{
+  const data=lastAll.filter(r=>r.needsCut);
+  if(!data.length) return;
+  let csv='SKU,Item Name,Closing Stock,Daily Rate,Min Cut (7d lot),Max Cut (15d lot)\n';
+  data.forEach(r=>{ csv+=`${r.sku},"${r.name}",${r.closing},${r.dailyRate},${r.benchMin},${r.benchMax}\n`; });
+  let ok=false;
+  try{if(navigator.clipboard){navigator.clipboard.writeText(csv);ok=true;}}catch(e){}
+  if(!ok){try{const ta=document.createElement('textarea');ta.value=csv;document.body.appendChild(ta);ta.select();ok=document.execCommand('copy');document.body.removeChild(ta);}catch(e){}}
+  const el=document.getElementById('copy-confirm');
+  el.style.cssText='display:block;font-size:11px;color:var(--teal);font-weight:bold;margin-top:4px;';
+  el.textContent=ok?'\u2713 Copied \u2014 paste into Excel':'Could not auto-copy \u2014 use Download instead.';
+});
+</script>
+</body>
+</html>
