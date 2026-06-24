@@ -7,22 +7,17 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <style>
   :root{
-    --paper:#e9e1cd; --paper-dark:#dcd1b6; --ink:#23231f; --ink-soft:#5a5648;
-    --chalk:#fbf8ef; --rust:#a3402b; --rust-bg:#f1ddd5;
-    --amber:#a87a1e; --amber-bg:#f1e6cd;
-    --teal:#2f5d52; --teal-bg:#dde9e3;
-    --green:#2a5c3f; --green-bg:#d9ead3;
+    --paper:#e9e1cd;--paper-dark:#dcd1b6;--ink:#23231f;--ink-soft:#5a5648;
+    --chalk:#fbf8ef;--rust:#a3402b;--rust-bg:#f1ddd5;
+    --amber:#a87a1e;--amber-bg:#f1e6cd;
+    --teal:#2f5d52;--teal-bg:#dde9e3;
+    --green:#2a5c3f;--green-bg:#d9ead3;
+    --purple:#4a235a;--purple-bg:#ead5f5;
     --line:#23231f33;
   }
-  *{box-sizing:border-box;}
-  body{
-    margin:0; background:var(--paper);
-    background-image: linear-gradient(var(--line) 1px,transparent 1px), linear-gradient(90deg,var(--line) 1px,transparent 1px);
-    background-size:28px 28px; color:var(--ink);
-    font-family:'Courier New',ui-monospace,monospace;
-    min-height:100vh; padding:24px 16px 60px;
-  }
-  .wrap{max-width:980px;margin:0 auto;}
+  *{box-sizing:border-box;margin:0;padding:0;}
+  body{background:var(--paper);background-image:linear-gradient(var(--line) 1px,transparent 1px),linear-gradient(90deg,var(--line) 1px,transparent 1px);background-size:28px 28px;color:var(--ink);font-family:'Courier New',ui-monospace,monospace;min-height:100vh;padding:24px 16px 60px;}
+  .wrap{max-width:1100px;margin:0 auto;}
   header{display:flex;justify-content:space-between;align-items:flex-end;flex-wrap:wrap;gap:12px;border-bottom:3px solid var(--ink);padding-bottom:14px;margin-bottom:22px;}
   h1{font-family:'Arial Black',Impact,sans-serif;font-weight:900;letter-spacing:-0.5px;font-size:clamp(24px,5vw,38px);margin:0;text-transform:uppercase;}
   h1 span{color:var(--teal);}
@@ -39,44 +34,47 @@
   .dropzone input{position:absolute;inset:0;opacity:0;cursor:pointer;}
   .dz-label{font-weight:bold;font-size:13px;text-transform:uppercase;letter-spacing:.5px;}
   .dz-sub{font-size:11px;color:var(--ink-soft);margin-top:5px;line-height:1.5;}
-  .dz-status{font-size:12px;margin-top:8px;color:var(--teal);font-weight:bold;}
+  .dz-status{font-size:12px;margin-top:8px;color:var(--teal);font-weight:bold;line-height:1.4;}
   .controls{display:flex;gap:14px;align-items:center;margin-top:18px;flex-wrap:wrap;}
   button{font-family:'Arial Black',Impact,sans-serif;text-transform:uppercase;letter-spacing:.5px;font-size:13px;background:var(--teal);color:var(--chalk);border:none;padding:12px 22px;cursor:pointer;box-shadow:3px 3px 0 var(--ink);}
   button:active{transform:translate(2px,2px);box-shadow:1px 1px 0 var(--ink);}
   button:disabled{background:#bbb;cursor:not-allowed;box-shadow:none;}
   button.rust{background:var(--rust);}
   button.secondary{background:var(--ink-soft);}
-  .summary{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:18px;}
+  .summary{display:grid;grid-template-columns:repeat(5,1fr);gap:10px;margin-bottom:18px;}
   @media(max-width:640px){.summary{grid-template-columns:repeat(2,1fr);}}
-  .stat{background:var(--chalk);border:1px solid var(--ink);padding:14px;text-align:center;}
-  .stat .num{font-size:24px;font-weight:bold;font-family:Georgia,serif;}
+  .stat{background:var(--chalk);border:1px solid var(--ink);padding:12px;text-align:center;}
+  .stat .num{font-size:22px;font-weight:bold;font-family:Georgia,serif;}
   .stat .lbl{font-size:10px;text-transform:uppercase;letter-spacing:.5px;color:var(--ink-soft);margin-top:4px;}
   .stat.green .num{color:var(--green);}
   .stat.rust .num{color:var(--rust);}
   .stat.amber .num{color:var(--amber);}
-  .tabs{display:flex;gap:0;margin-bottom:0;border-bottom:2px solid var(--ink);}
-  .tab{padding:10px 18px;font-size:11px;font-family:'Arial Black',Impact,sans-serif;text-transform:uppercase;letter-spacing:.5px;cursor:pointer;border:1px solid var(--ink);border-bottom:none;background:var(--paper);margin-right:4px;}
+  .stat.purple .num{color:var(--purple);}
+  .tabs{display:flex;gap:0;border-bottom:2px solid var(--ink);}
+  .tab{padding:10px 16px;font-size:11px;font-family:'Arial Black',Impact,sans-serif;text-transform:uppercase;letter-spacing:.5px;cursor:pointer;border:1px solid var(--ink);border-bottom:none;background:var(--paper);margin-right:4px;}
   .tab.active{background:var(--chalk);position:relative;bottom:-2px;border-bottom:2px solid var(--chalk);}
-  .tab-content{display:none;background:var(--chalk);border:1px solid var(--ink);border-top:none;padding:0;}
+  .tab-content{display:none;background:var(--chalk);padding:14px;}
   .tab-content.active{display:block;}
   table{width:100%;border-collapse:collapse;font-size:12px;}
-  th,td{border:1px solid var(--line);padding:7px 9px;text-align:left;}
+  th,td{border:1px solid var(--line);padding:7px 8px;text-align:left;}
   th{background:var(--ink);color:var(--chalk);text-transform:uppercase;font-size:10px;letter-spacing:.5px;position:sticky;top:0;}
   tr:nth-child(even){background:var(--paper-dark);}
   .num-col{text-align:right;}
   .pill{display:inline-block;padding:3px 8px;font-size:10px;text-transform:uppercase;letter-spacing:.5px;font-weight:bold;}
-  .pill.done{background:var(--green-bg);color:var(--green);}
-  .pill.partial{background:var(--amber-bg);color:var(--amber);}
+  .pill.ok{background:var(--green-bg);color:var(--green);}
   .pill.missing{background:var(--rust-bg);color:var(--rust);}
-  .pill.extra{background:#e8d5f5;color:#6b3fa0;}
-  .table-wrap{max-height:480px;overflow:auto;}
-  .foot-actions{display:flex;justify-content:flex-end;gap:10px;margin-top:16px;flex-wrap:wrap;}
+  .pill.above-min{background:var(--amber-bg);color:var(--amber);}
+  .pill.excess{background:var(--rust-bg);color:var(--rust);}
+  .pill.not-in-plan{background:var(--purple-bg);color:var(--purple);}
+  .pill.partial{background:var(--amber-bg);color:var(--amber);}
+  .table-wrap{max-height:480px;overflow:auto;border:1px solid var(--ink);}
+  .foot-actions{display:flex;justify-content:space-between;align-items:center;margin-top:14px;flex-wrap:wrap;gap:10px;}
   .err{color:var(--rust);font-size:12px;margin-top:6px;}
-  .empty{text-align:center;padding:30px;color:var(--ink-soft);font-size:12px;}
   .date-row{display:flex;align-items:center;gap:12px;margin-bottom:12px;font-size:12px;}
   .date-row input[type=text]{font-family:inherit;font-size:12px;border:1px solid var(--ink);padding:5px 8px;background:var(--chalk);width:140px;}
-  .signature{text-align:center;font-size:11px;color:var(--ink-soft);margin-top:30px;letter-spacing:1px;text-transform:uppercase;}
+  .info-box{background:var(--amber-bg);border:1px solid var(--amber);padding:10px 14px;font-size:11px;line-height:1.8;margin-bottom:14px;}
   #copy-confirm{font-size:11px;color:var(--teal);font-weight:bold;margin-top:8px;display:none;}
+  .signature{text-align:center;font-size:11px;color:var(--ink-soft);margin-top:30px;letter-spacing:1px;text-transform:uppercase;}
 </style>
 </head>
 <body>
@@ -84,21 +82,30 @@
   <header>
     <h1>Inward <span>Check</span></h1>
     <div>
-      <div class="tag">Tool 1 · Stage 2 — Production Review</div>
-      <div class="build">BUILD 2026-06-19 · v1</div>
+      <div class="tag">Tool 1 &middot; Stage 2 — Production Review</div>
+      <div class="build">BUILD 2026-06-24 &middot; v2</div>
     </div>
   </header>
 
   <div class="panel">
-    <h2><span class="stepnum">1</span> Upload approved plan &amp; today's inward</h2>
+    <h2><span class="stepnum">1</span> Upload weekly cutting plan &amp; today's inward</h2>
+    <div class="info-box">
+      <b>Flagging logic:</b><br>
+      &bull; Inward &le; Min Cut (7d) &rarr; <b style="color:var(--green)">OK</b><br>
+      &bull; Inward &gt; Min Cut but &le; Max Cut (15d) &rarr; <b style="color:var(--amber)">Above Min — Flag</b><br>
+      &bull; Inward &gt; Max Cut &rarr; <b style="color:var(--rust)">Excess — Above Max</b><br>
+      &bull; SKU not in plan (benchmark = 0) &rarr; <b style="color:var(--purple)">Not In Plan</b><br>
+      &bull; Nothing received against plan &rarr; <b style="color:var(--rust)">Not Received</b>
+    </div>
     <div class="date-row">
-      <label>Date: <input type="text" id="check-date" placeholder="e.g. 19 Jun 2026"></label>
+      <label>Date:</label>
+      <input type="text" id="check-date" placeholder="e.g. 24 Jun 2026">
     </div>
     <div class="uploads">
       <div class="dropzone" id="dz-plan">
         <input type="file" id="file-plan" accept=".xlsx,.xls,.csv">
-        <div class="dz-label">Approved Cutting Plan</div>
-        <div class="dz-sub">From Stage 1 output or the day's plan<br>Needs: <b>SKU, Item Name, Approved Qty</b></div>
+        <div class="dz-label">Weekly Cutting Plan</div>
+        <div class="dz-sub">Output from Cutting Benchmark Tool<br>Needs: <b>SKU, Min Cut (7d lot), Max Cut (15d lot)</b></div>
         <div class="dz-status" id="status-plan"></div>
       </div>
       <div class="dropzone" id="dz-inward">
@@ -116,294 +123,354 @@
 
   <div id="results" style="display:none;">
     <div class="summary">
-      <div class="stat green"><div class="num" id="s-done">0</div><div class="lbl">Fully Received</div></div>
-      <div class="stat amber"><div class="num" id="s-partial">0</div><div class="lbl">Partially Received</div></div>
+      <div class="stat green"><div class="num" id="s-ok">0</div><div class="lbl">OK</div></div>
+      <div class="stat amber"><div class="num" id="s-above-min">0</div><div class="lbl">Above Min — Flag</div></div>
+      <div class="stat rust"><div class="num" id="s-excess">0</div><div class="lbl">Excess — Above Max</div></div>
       <div class="stat rust"><div class="num" id="s-missing">0</div><div class="lbl">Not Received</div></div>
-      <div class="stat"><div class="num" id="s-extra">0</div><div class="lbl">Not In Plan</div></div>
+      <div class="stat purple"><div class="num" id="s-not-in-plan">0</div><div class="lbl">Not In Plan</div></div>
     </div>
 
     <div class="panel" style="padding:0;">
       <div class="tabs">
-        <div class="tab active" data-tab="all">All SKUs</div>
-        <div class="tab" data-tab="missing">Not Received</div>
-        <div class="tab" data-tab="partial">Partial</div>
-        <div class="tab" data-tab="extra">Not In Plan</div>
-        <div class="tab" data-tab="carryforward">Carry Forward</div>
+        <div class="tab active" data-tab="all">All</div>
+        <div class="tab" data-tab="flags">Flags Only</div>
+        <div class="tab" data-tab="not-in-plan">Not In Plan</div>
+        <div class="tab" data-tab="carry">Carry Forward</div>
       </div>
 
       <div class="tab-content active" id="tab-all">
-        <div class="table-wrap">
-          <table><thead><tr><th>SKU</th><th>Item Name</th><th class="num-col">Planned</th><th class="num-col">Received Today</th><th class="num-col">Balance Remaining</th><th>Status</th></tr></thead>
-          <tbody id="body-all"></tbody></table>
-        </div>
+        <div class="table-wrap"><table>
+          <thead><tr>
+            <th>SKU</th><th>Item Name</th>
+            <th class="num-col">Min Cut (7d)</th>
+            <th class="num-col">Max Cut (15d)</th>
+            <th class="num-col">Received Today</th>
+            <th class="num-col">Balance Remaining</th>
+            <th>Status</th>
+          </tr></thead>
+          <tbody id="body-all"></tbody>
+        </table></div>
       </div>
 
-      <div class="tab-content" id="tab-missing">
-        <div class="table-wrap">
-          <table><thead><tr><th>SKU</th><th>Item Name</th><th class="num-col">Planned</th><th class="num-col">Received</th><th class="num-col">Still Pending</th></tr></thead>
-          <tbody id="body-missing"></tbody></table>
-        </div>
+      <div class="tab-content" id="tab-flags">
+        <div class="table-wrap"><table>
+          <thead><tr>
+            <th>SKU</th><th>Item Name</th>
+            <th class="num-col">Min Cut (7d)</th>
+            <th class="num-col">Max Cut (15d)</th>
+            <th class="num-col">Received Today</th>
+            <th class="num-col">Over by</th>
+            <th>Status</th>
+          </tr></thead>
+          <tbody id="body-flags"></tbody>
+        </table></div>
       </div>
 
-      <div class="tab-content" id="tab-partial">
-        <div class="table-wrap">
-          <table><thead><tr><th>SKU</th><th>Item Name</th><th class="num-col">Planned</th><th class="num-col">Received</th><th class="num-col">Still Pending</th><th class="num-col">% Done</th></tr></thead>
-          <tbody id="body-partial"></tbody></table>
-        </div>
+      <div class="tab-content" id="tab-not-in-plan">
+        <div class="table-wrap"><table>
+          <thead><tr>
+            <th>SKU</th><th>Item Name</th>
+            <th class="num-col">Received</th>
+            <th>Note</th>
+          </tr></thead>
+          <tbody id="body-nip"></tbody>
+        </table></div>
       </div>
 
-      <div class="tab-content" id="tab-extra">
-        <div class="table-wrap">
-          <table><thead><tr><th>SKU</th><th>Item Name</th><th class="num-col">Received</th><th>Note</th></tr></thead>
-          <tbody id="body-extra"></tbody></table>
-        </div>
+      <div class="tab-content" id="tab-carry">
+        <div style="font-size:11px;color:var(--ink-soft);margin-bottom:10px;">SKUs with balance remaining against the weekly plan — carry forward to tomorrow.</div>
+        <div class="table-wrap"><table>
+          <thead><tr>
+            <th>SKU</th><th>Item Name</th>
+            <th class="num-col">Min Cut (7d)</th>
+            <th class="num-col">Received Today</th>
+            <th class="num-col">Still Pending</th>
+          </tr></thead>
+          <tbody id="body-carry"></tbody>
+        </table></div>
       </div>
 
-      <div class="tab-content" id="tab-carryforward">
-        <div style="padding:12px 16px;font-size:11px;color:var(--ink-soft);">All SKUs with a balance remaining — use this as tomorrow's carry-forward plan input.</div>
-        <div class="table-wrap">
-          <table><thead><tr><th>SKU</th><th>Item Name</th><th class="num-col">Original Plan</th><th class="num-col">Received Today</th><th class="num-col">Carry Forward to Tomorrow</th></tr></thead>
-          <tbody id="body-cf"></tbody></table>
-        </div>
-      </div>
-
-      <div style="padding:14px 16px;border-top:1px solid var(--line);display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;">
+      <div style="padding:14px;border-top:1px solid var(--line);display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;">
         <span id="result-note" style="font-size:11px;color:var(--ink-soft);"></span>
         <div style="display:flex;gap:10px;flex-wrap:wrap;">
           <button class="secondary" id="copy-btn">Copy Results</button>
-          <button class="rust" id="export-btn">Download CSV</button>
+          <button class="rust" id="export-flags-btn">Download Flags</button>
+          <button id="export-all-btn">Download Full Report</button>
           <button class="secondary" id="export-cf-btn">Download Carry Forward</button>
         </div>
       </div>
-      <div id="copy-confirm">\u2713 Copied to clipboard — paste into Excel or Sheets</div>
+      <div id="copy-confirm" style="padding:0 14px 10px;"></div>
     </div>
   </div>
 
-  <div class="signature">Stage 2 complete · Balance rolls into tomorrow's carry-forward plan</div>
+  <div class="signature">Min Cut = 7-day lot benchmark &middot; Max Cut = 15-day lot benchmark &middot; Inward above either threshold is flagged</div>
 </div>
 
 <script>
-let planData = null, inwardData = null, lastResults = [], lastCF = [];
+let planData=null, inwardData=null, lastResults=[], lastCF=[];
 
-function normHeader(h){ return String(h).trim().toLowerCase(); }
+function normH(h){ return String(h).trim().toLowerCase(); }
 function findCol(headers, candidates){
   for(const c of candidates){
-    const idx = headers.findIndex(h => normHeader(h).includes(c));
-    if(idx !== -1) return idx;
+    const idx=headers.findIndex(h=>normH(h).includes(c));
+    if(idx!==-1) return idx;
   }
   return -1;
 }
 function findHeaderRow(rows, must){
   for(let i=0;i<Math.min(rows.length,6);i++){
-    const t = rows[i].join('|').toLowerCase();
-    if(must.some(k => t.includes(k))) return i;
+    const t=rows[i].join('|').toLowerCase();
+    if(must.some(k=>t.includes(k))) return i;
   }
   return 0;
 }
 function parseFile(file, cb){
-  const reader = new FileReader();
-  reader.onload = e => {
+  const reader=new FileReader();
+  reader.onload=e=>{
     try{
-      const wb = XLSX.read(e.target.result, {type:'binary'});
-      cb(null, XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], {header:1, defval:''}));
-    }catch(err){ cb(err); }
+      const wb=XLSX.read(e.target.result,{type:'binary'});
+      cb(null,XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]],{header:1,defval:''}));
+    }catch(err){cb(err);}
   };
-  reader.onerror = () => cb(new Error('Could not read file'));
+  reader.onerror=()=>cb(new Error('Could not read file'));
   reader.readAsBinaryString(file);
 }
 
-function loadPlan(file){
-  parseFile(file, (err, rows) => {
-    if(err){ document.getElementById('status-plan').textContent='Error reading file'; return; }
-    const hi = findHeaderRow(rows, ['sku','particular','qty','approved','planned']);
-    const headers = rows[hi];
-    const skuIdx = findCol(headers, ['sku','particular','rm code']);
-    const nameIdx = findCol(headers, ['item name','item','name']);
-    const qtyIdx = findCol(headers, ['approved qty','approved','recommended qty','planned qty','qty','quantity']);
-    if(skuIdx===-1 || qtyIdx===-1){
-      document.getElementById('err-msg').textContent='Plan: could not find SKU / Qty columns. Headers found: '+headers.join(' | ');
+// Load weekly cutting plan
+document.getElementById('file-plan').addEventListener('change',e=>{
+  if(!e.target.files[0]) return;
+  document.getElementById('err-msg').textContent='';
+  parseFile(e.target.files[0],(err,rows)=>{
+    if(err){document.getElementById('status-plan').textContent='Error reading file';return;}
+    const hi=findHeaderRow(rows,['sku','particular','min cut','max cut','lot']);
+    const headers=rows[hi];
+    const skuIdx=findCol(headers,['sku','particular','rm code']);
+    const nameIdx=findCol(headers,['item name','item','name']);
+    const minIdx=findCol(headers,['min cut','min','7d','bench min']);
+    const maxIdx=findCol(headers,['max cut','max','15d','bench max']);
+    if(skuIdx===-1||minIdx===-1||maxIdx===-1){
+      document.getElementById('err-msg').textContent='Plan: need SKU, Min Cut, Max Cut columns. Found: '+headers.filter(Boolean).join(' | ');
       return;
     }
-    planData = {};
+    planData={};
+    let count=0;
     for(let i=hi+1;i<rows.length;i++){
-      const r = rows[i];
-      if(!r[skuIdx] || String(r[skuIdx]).toLowerCase().includes('total')) continue;
-      const sku = String(r[skuIdx]).trim();
-      const qty = parseFloat(r[qtyIdx])||0;
-      if(!planData[sku]) planData[sku] = {name: nameIdx!==-1 ? String(r[nameIdx]).trim() : '', qty:0};
-      planData[sku].qty += qty;
+      const r=rows[i];
+      if(!r[skuIdx]) continue;
+      const sku=String(r[skuIdx]).trim();
+      const minCut=parseFloat(r[minIdx])||0;
+      const maxCut=parseFloat(r[maxIdx])||0;
+      const name=nameIdx!==-1?String(r[nameIdx]).trim():'';
+      if(sku){ planData[sku]={name,minCut,maxCut}; count++; }
     }
-    document.getElementById('status-plan').innerHTML = '\u2713 '+Object.keys(planData).length+' SKUs loaded';
+    document.getElementById('status-plan').innerHTML='\u2713 '+count+' SKUs loaded';
     document.getElementById('dz-plan').classList.add('filled');
     checkReady();
   });
-}
+});
 
-function loadInward(file){
-  parseFile(file, (err, rows) => {
-    if(err){ document.getElementById('status-inward').textContent='Error reading file'; return; }
-    const hi = findHeaderRow(rows, ['sku','particular','qty','inward','received']);
-    const headers = rows[hi];
-    const skuIdx = findCol(headers, ['sku','particular','rm code']);
-    const nameIdx = findCol(headers, ['item name','item','name']);
-    const qtyIdx = findCol(headers, ['qty received','received','inward','qty','quantity']);
-    if(skuIdx===-1 || qtyIdx===-1){
-      document.getElementById('err-msg').textContent='Inward: could not find SKU / Qty columns. Headers found: '+headers.join(' | ');
+// Load today's inward
+document.getElementById('file-inward').addEventListener('change',e=>{
+  if(!e.target.files[0]) return;
+  document.getElementById('err-msg').textContent='';
+  parseFile(e.target.files[0],(err,rows)=>{
+    if(err){document.getElementById('status-inward').textContent='Error reading file';return;}
+    const hi=findHeaderRow(rows,['sku','particular','qty','inward','received']);
+    const headers=rows[hi];
+    const skuIdx=findCol(headers,['sku','particular','rm code']);
+    const nameIdx=findCol(headers,['item name','item','name']);
+    const qtyIdx=findCol(headers,['qty received','received','inward','qty','quantity']);
+    if(skuIdx===-1||qtyIdx===-1){
+      document.getElementById('err-msg').textContent='Inward: need SKU / Qty columns. Found: '+headers.filter(Boolean).join(' | ');
       return;
     }
-    inwardData = {};
+    inwardData={};
     for(let i=hi+1;i<rows.length;i++){
-      const r = rows[i];
-      if(!r[skuIdx] || String(r[skuIdx]).toLowerCase().includes('total')) continue;
-      const sku = String(r[skuIdx]).trim();
-      const qty = parseFloat(r[qtyIdx])||0;
-      if(!inwardData[sku]) inwardData[sku] = {name: nameIdx!==-1 ? String(r[nameIdx]).trim() : '', qty:0};
-      inwardData[sku].qty += qty;
+      const r=rows[i];
+      if(!r[skuIdx]) continue;
+      const sku=String(r[skuIdx]).trim();
+      const qty=parseFloat(r[qtyIdx])||0;
+      const name=nameIdx!==-1?String(r[nameIdx]).trim():'';
+      if(sku){ inwardData[sku]={qty,name}; }
     }
-    document.getElementById('status-inward').innerHTML = '\u2713 '+Object.keys(inwardData).length+' SKUs loaded';
+    document.getElementById('status-inward').innerHTML='\u2713 '+Object.keys(inwardData).length+' SKUs loaded';
     document.getElementById('dz-inward').classList.add('filled');
     checkReady();
   });
+});
+
+function checkReady(){ document.getElementById('run-btn').disabled=!(planData&&inwardData); }
+
+document.getElementById('run-btn').addEventListener('click',()=>{
+  document.getElementById('err-msg').textContent='';
+  const allSkus=new Set([...Object.keys(planData),...Object.keys(inwardData)]);
+  const results=[];
+  let okCount=0,aboveMinCount=0,excessCount=0,missingCount=0,nipCount=0;
+
+  allSkus.forEach(sku=>{
+    const plan=planData[sku];
+    const inward=inwardData[sku];
+    const received=inward?inward.qty:0;
+    const name=(plan?plan.name:'') || (inward?inward.name:'');
+
+    // Not in plan — came in but has no benchmark
+    if(!plan||(!plan.minCut&&!plan.maxCut)){
+      results.push({sku,name,minCut:0,maxCut:0,received,balance:0,overBy:received,status:'not-in-plan'});
+      nipCount++;
+      return;
+    }
+
+    const {minCut,maxCut}=plan;
+    const balance=Math.max(0,minCut-received);
+    let status,overBy=0;
+
+    if(received===0&&minCut>0){
+      status='missing'; missingCount++;
+    } else if(received<=minCut){
+      status='ok'; okCount++;
+    } else if(received<=maxCut){
+      status='above-min'; aboveMinCount++; overBy=received-minCut;
+    } else {
+      status='excess'; excessCount++; overBy=received-maxCut;
+    }
+
+    results.push({sku,name,minCut,maxCut,received,balance,overBy,status});
+  });
+
+  results.sort((a,b)=>{
+    const o={'excess':0,'above-min':1,'not-in-plan':2,'missing':3,'ok':4};
+    return (o[a.status]??5)-(o[b.status]??5);
+  });
+  lastResults=results;
+  lastCF=results.filter(r=>r.balance>0&&r.status!=='not-in-plan');
+
+  document.getElementById('s-ok').textContent=okCount;
+  document.getElementById('s-above-min').textContent=aboveMinCount;
+  document.getElementById('s-excess').textContent=excessCount;
+  document.getElementById('s-missing').textContent=missingCount;
+  document.getElementById('s-not-in-plan').textContent=nipCount;
+
+  const date=document.getElementById('check-date').value||'today';
+  document.getElementById('result-note').textContent='Check for '+date+' \u00b7 '+allSkus.size+' SKUs';
+  document.getElementById('results').style.display='block';
+  document.getElementById('copy-confirm').style.display='none';
+
+  renderAll(results);
+  renderFlags(results.filter(r=>['excess','above-min','missing'].includes(r.status)));
+  renderNip(results.filter(r=>r.status==='not-in-plan'));
+  renderCF(lastCF);
+});
+
+function pillHtml(s){
+  const labels={'ok':'OK','above-min':'Above Min \u2014 Flag','excess':'Excess \u2014 Above Max','missing':'Not Received','not-in-plan':'Not In Plan'};
+  return `<span class="pill ${s}">${labels[s]||s}</span>`;
 }
 
-function checkReady(){ document.getElementById('run-btn').disabled = !(planData && inwardData); }
-document.getElementById('file-plan').addEventListener('change', e => { if(e.target.files[0]) loadPlan(e.target.files[0]); });
-document.getElementById('file-inward').addEventListener('change', e => { if(e.target.files[0]) loadInward(e.target.files[0]); });
+function renderAll(data){
+  const body=document.getElementById('body-all');
+  body.innerHTML='';
+  data.forEach(r=>{
+    const tr=document.createElement('tr');
+    tr.innerHTML=`<td>${r.sku}</td><td>${r.name}</td><td class="num-col">${r.minCut||'\u2014'}</td><td class="num-col">${r.maxCut||'\u2014'}</td><td class="num-col">${r.received||'\u2014'}</td><td class="num-col">${r.balance>0?r.balance:'\u2014'}</td><td>${pillHtml(r.status)}</td>`;
+    body.appendChild(tr);
+  });
+  if(!data.length) body.innerHTML='<tr><td colspan="7" style="text-align:center;padding:24px;color:var(--ink-soft);">No data</td></tr>';
+}
 
-// tabs
-document.querySelectorAll('.tab').forEach(tab => {
-  tab.addEventListener('click', () => {
-    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
-    document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+function renderFlags(data){
+  const body=document.getElementById('body-flags');
+  body.innerHTML='';
+  if(!data.length){body.innerHTML='<tr><td colspan="7" style="text-align:center;padding:24px;color:var(--green);">\u2713 No flags — all inwards within benchmark</td></tr>';return;}
+  data.forEach(r=>{
+    const tr=document.createElement('tr');
+    tr.innerHTML=`<td>${r.sku}</td><td>${r.name}</td><td class="num-col">${r.minCut||'\u2014'}</td><td class="num-col">${r.maxCut||'\u2014'}</td><td class="num-col">${r.received||'\u2014'}</td><td class="num-col" style="color:var(--rust);font-weight:bold;">${r.overBy>0?'+'+r.overBy:'\u2014'}</td><td>${pillHtml(r.status)}</td>`;
+    body.appendChild(tr);
+  });
+}
+
+function renderNip(data){
+  const body=document.getElementById('body-nip');
+  body.innerHTML='';
+  if(!data.length){body.innerHTML='<tr><td colspan="4" style="text-align:center;padding:24px;color:var(--ink-soft);">No off-plan inwards</td></tr>';return;}
+  data.forEach(r=>{
+    const tr=document.createElement('tr');
+    tr.innerHTML=`<td>${r.sku}</td><td>${r.name}</td><td class="num-col">${r.received}</td><td>Not in weekly cutting plan \u2014 flag for review</td>`;
+    body.appendChild(tr);
+  });
+}
+
+function renderCF(data){
+  const body=document.getElementById('body-carry');
+  body.innerHTML='';
+  if(!data.length){body.innerHTML='<tr><td colspan="5" style="text-align:center;padding:24px;color:var(--green);">\u2713 All planned quantities received</td></tr>';return;}
+  data.forEach(r=>{
+    const tr=document.createElement('tr');
+    tr.innerHTML=`<td>${r.sku}</td><td>${r.name}</td><td class="num-col">${r.minCut}</td><td class="num-col">${r.received||'\u2014'}</td><td class="num-col"><b>${r.balance}</b></td>`;
+    body.appendChild(tr);
+  });
+}
+
+// Tabs
+document.querySelectorAll('.tab').forEach(tab=>{
+  tab.addEventListener('click',()=>{
+    document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+    document.querySelectorAll('.tab-content').forEach(t=>t.classList.remove('active'));
     tab.classList.add('active');
     document.getElementById('tab-'+tab.dataset.tab).classList.add('active');
   });
 });
 
-document.getElementById('run-btn').addEventListener('click', () => {
-  document.getElementById('err-msg').textContent='';
-  const allSkus = new Set([...Object.keys(planData), ...Object.keys(inwardData)]);
-  const results = [];
-  let done=0, partial=0, missing=0, extra=0;
+function getDateStr(){const d=new Date();const m=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];return d.getDate()+'-'+m[d.getMonth()]+'-'+d.getFullYear();}
 
-  allSkus.forEach(sku => {
-    const planned = planData[sku] ? planData[sku].qty : 0;
-    const received = inwardData[sku] ? inwardData[sku].qty : 0;
-    const name = (planData[sku]?.name || inwardData[sku]?.name || '');
-    const balance = Math.max(0, planned - received);
-    let status;
-    if(!planData[sku]){ status='extra'; extra++; }
-    else if(received<=0){ status='missing'; missing++; }
-    else if(balance<=0.5){ status='done'; done++; }
-    else { status='partial'; partial++; }
-    results.push({sku, name, planned, received, balance, status});
-  });
-
-  results.sort((a,b) => {
-    const order = {missing:0, partial:1, extra:2, done:3};
-    return order[a.status]-order[b.status] || (b.planned-b.received)-(a.planned-a.received);
-  });
-  lastResults = results;
-  lastCF = results.filter(r => r.balance>0 && r.status!=='extra');
-
-  document.getElementById('s-done').textContent = done;
-  document.getElementById('s-partial').textContent = partial;
-  document.getElementById('s-missing').textContent = missing;
-  document.getElementById('s-extra').textContent = extra;
-
-  const date = document.getElementById('check-date').value || 'today';
-  document.getElementById('result-note').textContent = `Check for ${date} — ${allSkus.size} SKUs total`;
-
-  function pillHtml(s){ const lbl={done:'Received',partial:'Partial',missing:'Not Received',extra:'Not In Plan'}; return `<span class="pill ${s}">${lbl[s]}</span>`; }
-
-  // All tab
-  const bodyAll = document.getElementById('body-all');
-  bodyAll.innerHTML = results.length ? '' : '<tr><td colspan="6" class="empty">No data</td></tr>';
-  results.forEach(r => {
-    const tr = document.createElement('tr');
-    tr.innerHTML = `<td>${r.sku}</td><td>${r.name}</td><td class="num-col">${r.planned||'—'}</td><td class="num-col">${r.received||'—'}</td><td class="num-col">${r.balance>0?r.balance:'—'}</td><td>${pillHtml(r.status)}</td>`;
-    bodyAll.appendChild(tr);
-  });
-
-  // Missing tab
-  const bodyMissing = document.getElementById('body-missing');
-  const miss = results.filter(r=>r.status==='missing');
-  bodyMissing.innerHTML = miss.length ? '' : '<tr><td colspan="5" class="empty">All planned SKUs received</td></tr>';
-  miss.forEach(r => { const tr=document.createElement('tr'); tr.innerHTML=`<td>${r.sku}</td><td>${r.name}</td><td class="num-col">${r.planned}</td><td class="num-col">0</td><td class="num-col">${r.planned}</td>`; bodyMissing.appendChild(tr); });
-
-  // Partial tab
-  const bodyPartial = document.getElementById('body-partial');
-  const part = results.filter(r=>r.status==='partial');
-  bodyPartial.innerHTML = part.length ? '' : '<tr><td colspan="6" class="empty">No partial deliveries</td></tr>';
-  part.forEach(r => { const pct=r.planned>0?Math.round(r.received/r.planned*100):0; const tr=document.createElement('tr'); tr.innerHTML=`<td>${r.sku}</td><td>${r.name}</td><td class="num-col">${r.planned}</td><td class="num-col">${r.received}</td><td class="num-col">${r.balance}</td><td class="num-col">${pct}%</td>`; bodyPartial.appendChild(tr); });
-
-  // Extra tab
-  const bodyExtra = document.getElementById('body-extra');
-  const ex = results.filter(r=>r.status==='extra');
-  bodyExtra.innerHTML = ex.length ? '' : '<tr><td colspan="4" class="empty">No off-plan inwards</td></tr>';
-  ex.forEach(r => { const tr=document.createElement('tr'); tr.innerHTML=`<td>${r.sku}</td><td>${r.name}</td><td class="num-col">${r.received}</td><td>Not in today's approved plan — flag for review</td>`; bodyExtra.appendChild(tr); });
-
-  // Carry forward tab
-  const bodyCF = document.getElementById('body-cf');
-  bodyCF.innerHTML = lastCF.length ? '' : '<tr><td colspan="5" class="empty">All planned quantities received</td></tr>';
-  lastCF.forEach(r => { const tr=document.createElement('tr'); tr.innerHTML=`<td>${r.sku}</td><td>${r.name}</td><td class="num-col">${r.planned}</td><td class="num-col">${r.received}</td><td class="num-col"><b>${r.balance}</b></td>`; bodyCF.appendChild(tr); });
-
-  document.getElementById('results').style.display='block';
-  document.getElementById('copy-confirm').style.display='none';
-});
-
-function buildMainCsv(){
-  const date = document.getElementById('check-date').value||'';
-  let csv = `Inward Check — ${date}\nSKU,Item Name,Planned Qty,Received Today,Balance Remaining,Status\n`;
-  lastResults.forEach(r => {
-    csv += `${r.sku},"${r.name.replace(/"/g,'')}",${r.planned||0},${r.received||0},${r.balance},${r.status}\n`;
-  });
+function buildCsv(data,header,cols){
+  const date=document.getElementById('check-date').value||getDateStr();
+  let csv=header+' \u2014 '+date+'\n'+cols.join(',')+'\n';
+  data.forEach(r=>{ csv+=cols.map(c=>typeof r[c]==='string'?`"${r[c]}"`:r[c]??'').join(',')+'\n'; });
   return csv;
 }
 
-function buildCFCsv(){
-  const date = document.getElementById('check-date').value||'';
-  let csv = `Carry Forward Plan — ${date}\nSKU,Item Name,Original Plan,Received Today,Carry Forward Qty\n`;
-  lastCF.forEach(r => {
-    csv += `${r.sku},"${r.name.replace(/"/g,'')}",${r.planned},${r.received},${r.balance}\n`;
-  });
-  return csv;
-}
-
-function downloadCsv(csv, filename){
+function downloadCsv(csv,filename){
   try{
-    const blob = new Blob([csv],{type:'text/csv'});
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href=url; a.download=filename;
-    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    const blob=new Blob([csv],{type:'text/csv'});
+    const url=URL.createObjectURL(blob);
+    const a=document.createElement('a');a.href=url;a.download=filename;
+    document.body.appendChild(a);a.click();document.body.removeChild(a);
     setTimeout(()=>URL.revokeObjectURL(url),2000);
-  }catch(e){
-    document.getElementById('err-msg').textContent='Download failed: '+e.message+' — use Copy Results instead.';
-  }
+  }catch(e){document.getElementById('err-msg').textContent='Download failed \u2014 use Copy instead.';}
 }
 
-document.getElementById('export-btn').addEventListener('click', () => {
-  if(!lastResults.length) return;
-  const date = (document.getElementById('check-date').value||'today').replace(/\s/g,'-');
-  downloadCsv(buildMainCsv(), `inward_check_${date}.csv`);
+document.getElementById('export-flags-btn').addEventListener('click',()=>{
+  const data=lastResults.filter(r=>['excess','above-min','missing'].includes(r.status));
+  if(!data.length) return;
+  let csv='Inward Flags \u2014 '+getDateStr()+'\nSKU,Item Name,Min Cut (7d),Max Cut (15d),Received Today,Over By,Status\n';
+  data.forEach(r=>{ csv+=`${r.sku},"${r.name}",${r.minCut},${r.maxCut},${r.received},${r.overBy>0?r.overBy:0},${r.status}\n`; });
+  downloadCsv(csv,'Inward_Flags_'+getDateStr()+'.csv');
 });
 
-document.getElementById('export-cf-btn').addEventListener('click', () => {
+document.getElementById('export-all-btn').addEventListener('click',()=>{
+  if(!lastResults.length) return;
+  let csv='Inward Check Full Report \u2014 '+getDateStr()+'\nSKU,Item Name,Min Cut (7d),Max Cut (15d),Received Today,Balance Remaining,Over By,Status\n';
+  lastResults.forEach(r=>{ csv+=`${r.sku},"${r.name}",${r.minCut},${r.maxCut},${r.received},${r.balance},${r.overBy||0},${r.status}\n`; });
+  downloadCsv(csv,'Inward_Check_'+getDateStr()+'.csv');
+});
+
+document.getElementById('export-cf-btn').addEventListener('click',()=>{
   if(!lastCF.length) return;
-  const date = (document.getElementById('check-date').value||'today').replace(/\s/g,'-');
-  downloadCsv(buildCFCsv(), `carry_forward_${date}.csv`);
+  let csv='Carry Forward \u2014 '+getDateStr()+'\nSKU,Item Name,Min Cut (7d),Received Today,Still Pending\n';
+  lastCF.forEach(r=>{ csv+=`${r.sku},"${r.name}",${r.minCut},${r.received||0},${r.balance}\n`; });
+  downloadCsv(csv,'Carry_Forward_'+getDateStr()+'.csv');
 });
 
-document.getElementById('copy-btn').addEventListener('click', () => {
+document.getElementById('copy-btn').addEventListener('click',()=>{
   if(!lastResults.length) return;
-  const csv = buildMainCsv();
-  let copied = false;
-  try{ if(navigator.clipboard){ navigator.clipboard.writeText(csv); copied=true; } }catch(e){}
-  if(!copied){ try{ const ta=document.createElement('textarea'); ta.value=csv; document.body.appendChild(ta); ta.select(); copied=document.execCommand('copy'); document.body.removeChild(ta); }catch(e){} }
-  const el = document.getElementById('copy-confirm');
-  el.style.display='block';
-  el.textContent = copied ? '\u2713 Copied to clipboard — paste into Excel or Sheets' : 'Could not auto-copy — try Download CSV instead.';
+  let csv='SKU,Item Name,Min Cut (7d),Max Cut (15d),Received Today,Balance,Status\n';
+  lastResults.forEach(r=>{ csv+=`${r.sku},"${r.name}",${r.minCut},${r.maxCut},${r.received},${r.balance},${r.status}\n`; });
+  let ok=false;
+  try{if(navigator.clipboard){navigator.clipboard.writeText(csv);ok=true;}}catch(e){}
+  if(!ok){try{const ta=document.createElement('textarea');ta.value=csv;document.body.appendChild(ta);ta.select();ok=document.execCommand('copy');document.body.removeChild(ta);}catch(e){}}
+  const el=document.getElementById('copy-confirm');
+  el.style.cssText='display:block;font-size:11px;color:var(--teal);font-weight:bold;';
+  el.textContent=ok?'\u2713 Copied':'Could not auto-copy \u2014 use Download instead.';
 });
 </script>
 </body>
