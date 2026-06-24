@@ -6,61 +6,52 @@
 <title>D'Chica Operations Hub</title>
 <style>
   :root{
-    --paper:#e9e1cd; --ink:#23231f; --ink-soft:#5a5648;
-    --chalk:#fbf8ef; --rust:#a3402b; --rust-bg:#f1ddd5;
-    --teal:#2f5d52; --teal-bg:#dde9e3;
+    --paper:#e9e1cd;--ink:#23231f;--ink-soft:#5a5648;--chalk:#fbf8ef;
+    --rust:#a3402b;--rust-bg:#f1ddd5;--teal:#2f5d52;--teal-bg:#dde9e3;
+    --amber:#a87a1e;--amber-bg:#f1e6cd;--purple:#4a235a;--purple-bg:#ead5f5;
     --line:#23231f33;
   }
   *{box-sizing:border-box;margin:0;padding:0;}
-  body{
-    background:var(--paper);
-    background-image: linear-gradient(var(--line) 1px,transparent 1px), linear-gradient(90deg,var(--line) 1px,transparent 1px);
-    background-size:28px 28px;
-    color:var(--ink);
-    font-family:'Courier New',ui-monospace,monospace;
-    min-height:100vh;
-    display:flex;
-    flex-direction:column;
-    align-items:center;
-    justify-content:center;
-    padding:32px 16px;
-  }
-  .wrap{max-width:760px;width:100%;}
-  .brand{text-align:center;margin-bottom:32px;}
+  body{background:var(--paper);background-image:linear-gradient(var(--line) 1px,transparent 1px),linear-gradient(90deg,var(--line) 1px,transparent 1px);background-size:28px 28px;color:var(--ink);font-family:'Courier New',ui-monospace,monospace;min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:32px 16px;}
+  .wrap{max-width:900px;width:100%;}
+  .brand{text-align:center;margin-bottom:28px;}
   .brand-name{font-family:'Arial Black',Impact,sans-serif;font-size:clamp(36px,8vw,64px);font-weight:900;text-transform:uppercase;letter-spacing:-1px;line-height:1;}
   .brand-name span{color:var(--rust);}
   .brand-sub{font-size:11px;letter-spacing:3px;text-transform:uppercase;color:var(--ink-soft);margin-top:8px;border-top:1px solid var(--ink);border-bottom:1px solid var(--ink);padding:6px 0;display:inline-block;}
-  .date-strip{font-size:11px;color:var(--ink-soft);text-align:center;margin-bottom:28px;letter-spacing:.5px;}
-  .tools{display:grid;grid-template-columns:repeat(2,1fr);gap:20px;}
-  @media(max-width:520px){.tools{grid-template-columns:1fr;}}
-  .tool-card{background:var(--chalk);border:2px solid var(--ink);box-shadow:5px 5px 0 var(--ink);padding:28px 24px;text-decoration:none;color:var(--ink);display:block;transition:transform .1s, box-shadow .1s;position:relative;}
-  .tool-card:hover{transform:translate(-2px,-2px);box-shadow:7px 7px 0 var(--ink);}
-  .tool-card:active{transform:translate(3px,3px);box-shadow:2px 2px 0 var(--ink);}
-  .tool-stage{font-size:10px;letter-spacing:1.5px;text-transform:uppercase;font-weight:bold;margin-bottom:10px;}
-  .tool-card.stage1 .tool-stage{color:var(--rust);}
-  .tool-card.stage2 .tool-stage{color:var(--teal);}
-  .tool-title{font-family:'Arial Black',Impact,sans-serif;font-size:22px;font-weight:900;text-transform:uppercase;letter-spacing:-0.5px;line-height:1.1;margin-bottom:12px;}
-  .tool-card.stage1 .tool-title span{color:var(--rust);}
-  .tool-card.stage2 .tool-title span{color:var(--teal);}
+  .date-strip{font-size:11px;color:var(--ink-soft);text-align:center;margin-bottom:24px;letter-spacing:.5px;}
+  .section-label{font-size:10px;text-transform:uppercase;letter-spacing:2px;color:var(--ink-soft);margin-bottom:10px;padding-left:4px;}
+  .tools{display:grid;grid-template-columns:repeat(2,1fr);gap:16px;margin-bottom:16px;}
+  .tools.three{grid-template-columns:repeat(3,1fr);}
+  @media(max-width:580px){.tools,.tools.three{grid-template-columns:1fr;}}
+  .tool-card{background:var(--chalk);border:2px solid var(--ink);box-shadow:4px 4px 0 var(--ink);padding:22px 20px;text-decoration:none;color:var(--ink);display:block;transition:transform .1s,box-shadow .1s;position:relative;}
+  .tool-card:hover{transform:translate(-2px,-2px);box-shadow:6px 6px 0 var(--ink);}
+  .tool-card:active{transform:translate(2px,2px);box-shadow:2px 2px 0 var(--ink);}
+  .tool-stage{font-size:10px;letter-spacing:1.5px;text-transform:uppercase;font-weight:bold;margin-bottom:8px;}
+  .tool-title{font-family:'Arial Black',Impact,sans-serif;font-size:18px;font-weight:900;text-transform:uppercase;letter-spacing:-0.5px;line-height:1.1;margin-bottom:10px;}
   .who-tag{display:inline-block;padding:3px 8px;font-size:10px;font-weight:bold;letter-spacing:.5px;text-transform:uppercase;margin-bottom:10px;}
-  .tool-card.stage1 .who-tag{background:var(--rust-bg);color:var(--rust);}
-  .tool-card.stage2 .who-tag{background:var(--teal-bg);color:var(--teal);}
-  .tool-desc{font-size:12px;line-height:1.6;color:var(--ink-soft);margin-bottom:18px;}
-  .tool-when{font-size:10px;letter-spacing:.5px;text-transform:uppercase;color:var(--ink-soft);border-top:1px solid var(--line);padding-top:10px;}
-  .arrow{position:absolute;bottom:24px;right:24px;font-size:20px;font-weight:bold;}
-  .tool-card.stage1 .arrow{color:var(--rust);}
-  .tool-card.stage2 .arrow{color:var(--teal);}
-  .tool-card.stage3 .tool-stage{color:var(--amber);}
-  .tool-card.stage3 .tool-title span{color:var(--amber);}
-  .tool-card.stage3 .who-tag{background:var(--amber-bg);color:var(--amber);}
-  .tool-card.stage3 .arrow{color:var(--amber);}
-  .tool-card.stage4 .tool-stage{color:var(--purple);}
-  .tool-card.stage4 .tool-title span{color:var(--purple);}
-  .tool-card.stage4 .who-tag{background:var(--purple-bg);color:var(--purple);}
-  .tool-card.stage4 .arrow{color:var(--purple);}
-  .flow{display:flex;align-items:center;justify-content:center;gap:12px;margin:24px 0;font-size:11px;color:var(--ink-soft);letter-spacing:.5px;text-transform:uppercase;}
+  .tool-desc{font-size:11px;line-height:1.6;color:var(--ink-soft);margin-bottom:14px;}
+  .tool-when{font-size:10px;letter-spacing:.5px;text-transform:uppercase;color:var(--ink-soft);border-top:1px solid var(--line);padding-top:8px;}
+  .arrow{position:absolute;bottom:20px;right:20px;font-size:18px;font-weight:bold;}
+
+  .s1 .tool-stage,.s1 .arrow{color:var(--rust);}
+  .s1 .tool-title span{color:var(--rust);}
+  .s1 .who-tag{background:var(--rust-bg);color:var(--rust);}
+
+  .s2 .tool-stage,.s2 .arrow{color:var(--amber);}
+  .s2 .tool-title span{color:var(--amber);}
+  .s2 .who-tag{background:var(--amber-bg);color:var(--amber);}
+
+  .s3 .tool-stage,.s3 .arrow{color:var(--teal);}
+  .s3 .tool-title span{color:var(--teal);}
+  .s3 .who-tag{background:var(--teal-bg);color:var(--teal);}
+
+  .s4 .tool-stage,.s4 .arrow{color:var(--purple);}
+  .s4 .tool-title span{color:var(--purple);}
+  .s4 .who-tag{background:var(--purple-bg);color:var(--purple);}
+
+  .flow{display:flex;align-items:center;justify-content:center;gap:12px;margin:12px 0;font-size:10px;color:var(--ink-soft);letter-spacing:.5px;text-transform:uppercase;}
   .flow-line{flex:1;height:1px;background:var(--ink-soft);}
-  .footer{text-align:center;font-size:10px;color:var(--ink-soft);letter-spacing:1px;text-transform:uppercase;margin-top:32px;}
+  .footer{text-align:center;font-size:10px;color:var(--ink-soft);letter-spacing:1px;text-transform:uppercase;margin-top:24px;}
 </style>
 </head>
 <body>
@@ -69,57 +60,57 @@
     <div class="brand-name">D<span>'</span>Chica</div>
     <div class="brand-sub">Operations Hub</div>
   </div>
-
   <div class="date-strip" id="date-strip"></div>
 
-  <div class="tools">
-    <a class="tool-card stage1" href="Cutting_Plan_Check_Tool.html">
-      <div class="tool-stage">Tool 1 &middot; Stage 1</div>
-      <div class="tool-title">Cutting Plan <span>Check</span></div>
-      <div class="who-tag">Warehouse Manager</div>
-      <div class="tool-desc">Upload today's stock position and the draft cutting plan. Flags overstocked sizes and recommends adjusted quantities before the plan goes to the floor.</div>
-      <div class="tool-when">Run every morning before cutting starts</div>
-      <div class="arrow">&rarr;</div>
-    </a>
-    <a class="tool-card stage2" href="Inward_Check_Tool.html">
-      <div class="tool-stage">Tool 1 &middot; Stage 2</div>
-      <div class="tool-title">Inward <span>Check</span></div>
-      <div class="who-tag">Production Manager</div>
-      <div class="tool-desc">Upload the approved plan and today's inward report. Flags what was received, what's missing, what came in off-plan, and generates the carry-forward for tomorrow.</div>
-      <div class="tool-when">Run every evening when inwards are logged</div>
-      <div class="arrow">&rarr;</div>
-    </a>
-    <a class="tool-card stage3" href="RM_Pull_List_Tool.html">
-      <div class="tool-stage">Tool 2 &middot; DC &rarr; RM</div>
+  <div class="section-label">Production Planning</div>
+  <div class="tools three">
+    <a class="tool-card s1" href="RM_Pull_List_Tool.html">
+      <div class="tool-stage">Step 1 &middot; DC &rarr; RM</div>
       <div class="tool-title">RM Pull <span>List</span></div>
       <div class="who-tag">Store / Planning</div>
-      <div class="tool-desc">Upload the DC&rarr;RM master and today's DC requirement. Instantly generates a consolidated RM pull list with total quantities needed for production.</div>
-      <div class="tool-when">Run whenever a new DC requirement comes in</div>
+      <div class="tool-desc">Upload DC&rarr;RM master and today's DC requirement. Generates a consolidated RM pull list with total quantities.</div>
+      <div class="tool-when">Run before production starts</div>
       <div class="arrow">&rarr;</div>
     </a>
-      <a class="tool-card stage4" href="purchase_budget.html">
-      <div class="tool-stage">Tool 3 &middot; Finance</div>
+    <a class="tool-card s2" href="Cutting_Benchmark_Tool.html">
+      <div class="tool-stage">Step 2 &middot; Cutting Plan</div>
+      <div class="tool-title">Cutting <span>Benchmark</span></div>
+      <div class="who-tag">Production Manager</div>
+      <div class="tool-desc">Upload outward data and closing stock. Generates lot-size optimised cutting targets — Min (7d) and Max (15d) — with overstock flags.</div>
+      <div class="tool-when">Run weekly &middot; Update stock daily</div>
+      <div class="arrow">&rarr;</div>
+    </a>
+    <a class="tool-card s3" href="Inward_Check_Tool.html">
+      <div class="tool-stage">Step 3 &middot; Inward Check</div>
+      <div class="tool-title">Inward <span>Check</span></div>
+      <div class="who-tag">Production Manager</div>
+      <div class="tool-desc">Upload the weekly cutting benchmark and today's inward. Flags excess quantities, off-plan SKUs, and generates carry-forward for tomorrow.</div>
+      <div class="tool-when">Run every evening</div>
+      <div class="arrow">&rarr;</div>
+    </a>
+  </div>
+
+  <div class="flow"><div class="flow-line"></div><div class="flow-label">Step 2 benchmark feeds Step 3 inward check</div><div class="flow-line"></div></div>
+
+  <div class="section-label" style="margin-top:16px;">Finance</div>
+  <div class="tools" style="grid-template-columns:1fr;">
+    <a class="tool-card s4" href="purchase_budget.html">
+      <div class="tool-stage">Finance &middot; Monthly</div>
       <div class="tool-title">Purchase <span>Budget</span></div>
       <div class="who-tag">Accounts &amp; Purchase Manager</div>
-      <div class="tool-desc">Track monthly purchase budgets across Fabric, Packaging, Trims, Finished Product and MCF categories. Submit and approve purchase requests with a full audit trail.</div>
+      <div class="tool-desc">Track monthly purchase budgets across Fabric, Packaging, Trims, Finished Product and MCF. Submit and approve purchase requests.</div>
       <div class="tool-when">Accounts sets budgets &middot; Purchase Manager submits requests</div>
       <div class="arrow">&rarr;</div>
     </a>
   </div>
 
-  <div class="flow">
-    <div class="flow-line"></div>
-    <div class="flow-label">Stage 1 approved plan feeds Stage 2</div>
-    <div class="flow-line"></div>
-  </div>
-
   <div class="footer">D'Chica Fashion Lifestyle &middot; Internal Operations &middot; Not for external distribution</div>
 </div>
 <script>
-  const d = new Date();
+  const d=new Date();
   const days=['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
   const months=['January','February','March','April','May','June','July','August','September','October','November','December'];
-  document.getElementById('date-strip').textContent = days[d.getDay()]+', '+d.getDate()+' '+months[d.getMonth()]+' '+d.getFullYear();
+  document.getElementById('date-strip').textContent=days[d.getDay()]+', '+d.getDate()+' '+months[d.getMonth()]+' '+d.getFullYear();
 </script>
 </body>
 </html>
