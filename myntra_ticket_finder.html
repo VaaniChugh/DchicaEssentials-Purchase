@@ -1,0 +1,716 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Myntra Ticket Finder — D'Chica</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+:root {
+  --bg2: #f7f8fa; --bg3: #eef0f3;
+  --text: #111827; --text2: #4b5563; --text3: #9ca3af;
+  --border: #e5e7eb; --border2: #d1d5db;
+  --green: #16a34a; --green-bg: #f0fdf4; --green-border: #bbf7d0;
+  --red: #dc2626; --red-bg: #fef2f2; --red-border: #fecaca;
+  --amber: #d97706; --amber-bg: #fffbeb; --amber-border: #fde68a;
+  --blue: #2563eb; --blue-bg: #eff6ff; --blue-border: #bfdbfe;
+  --radius: 10px; --radius-sm: 6px;
+}
+body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: var(--bg2); color: var(--text); min-height: 100vh; }
+.topbar { background: #fff; border-bottom: 1px solid var(--border); padding: 14px 32px; display: flex; align-items: center; gap: 12px; }
+.topbar .logo { font-size: 15px; font-weight: 700; }
+.topbar .tag { font-size: 11px; background: var(--blue-bg); color: var(--blue); padding: 3px 8px; border-radius: 20px; font-weight: 600; }
+.wrap { max-width: 800px; margin: 0 auto; padding: 32px 24px 64px; }
+h1 { font-size: 22px; font-weight: 700; margin-bottom: 4px; }
+.lead { font-size: 14px; color: var(--text2); margin-bottom: 28px; line-height: 1.6; }
+.step-label { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.8px; color: var(--text3); margin-bottom: 12px; }
+
+/* ── REPORT CARDS ── */
+.reports-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; margin-bottom: 8px; }
+
+.report-card { background: #fff; border: 1.5px solid var(--border); border-radius: var(--radius); overflow: hidden; transition: border-color 0.15s; }
+.report-card.optional { border-style: dashed; }
+.report-card.loaded  { border-color: var(--green); }
+
+.rc-header { padding: 12px 14px 10px; border-bottom: 1px solid var(--border); display: flex; align-items: flex-start; gap: 10px; }
+.rc-num { width: 22px; height: 22px; border-radius: 50%; background: var(--blue-bg); color: var(--blue); font-size: 11px; font-weight: 700; display: flex; align-items: center; justify-content: center; flex-shrink: 0; margin-top: 1px; }
+.report-card.optional .rc-num { background: var(--bg3); color: var(--text3); }
+.rc-info .rn  { font-size: 13px; font-weight: 600; margin-bottom: 2px; }
+.rc-info .rp  { font-size: 11px; color: var(--text3); line-height: 1.45; }
+.rc-info .rpath { font-size: 10px; font-family: monospace; background: var(--bg2); color: var(--text2); padding: 2px 6px; border-radius: 3px; margin-top: 5px; display: inline-block; }
+
+/* The label IS the drop zone — clicking it natively opens file dialog */
+.rc-label {
+  display: flex; align-items: center; gap: 8px;
+  padding: 10px 14px; cursor: pointer; min-height: 44px;
+  transition: background 0.12s; user-select: none;
+}
+.rc-label:hover { background: var(--bg2); }
+.rc-label.dragover { background: var(--blue-bg); border-color: var(--blue); }
+.report-card.loaded .rc-label { background: var(--green-bg); cursor: default; }
+
+/* Hide the actual input — label handles clicks */
+.rc-input { display: none !important; }
+
+.rc-icon   { font-size: 16px; flex-shrink: 0; }
+.rc-status { font-size: 12px; color: var(--text3); flex: 1; line-height: 1.4; }
+.report-card.loaded .rc-status { color: var(--green); font-weight: 500; }
+
+.rc-clear {
+  font-size: 11px; color: var(--text3); background: none; border: none;
+  cursor: pointer; padding: 3px 7px; border-radius: 4px; flex-shrink: 0; display: none;
+}
+.rc-clear:hover { background: var(--red-bg); color: var(--red); }
+.report-card.loaded .rc-clear { display: block; }
+
+.req-note { font-size: 12px; color: var(--text3); margin-bottom: 20px; }
+.req-note span { color: var(--red); font-weight: 600; }
+
+.progress-wrap { height: 4px; background: var(--bg3); border-radius: 2px; margin-bottom: 16px; display: none; overflow: hidden; }
+.progress-bar  { height: 100%; background: var(--blue); width: 0; transition: width 0.25s; }
+
+.run-btn {
+  width: 100%; padding: 13px; background: var(--blue); color: #fff;
+  border: none; border-radius: var(--radius); font-size: 15px; font-weight: 700;
+  cursor: pointer; transition: background 0.15s; margin-bottom: 32px;
+}
+.run-btn:hover:not(:disabled) { background: #1d4ed8; }
+.run-btn:disabled { background: var(--bg3); color: var(--text3); cursor: not-allowed; }
+
+/* ── RESULTS ── */
+.results { display: none; }
+.results.show { display: block; }
+.summary-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-bottom: 24px; }
+.metric { background: #fff; border: 1px solid var(--border); border-radius: var(--radius); padding: 14px 16px; }
+.metric .ml { font-size: 11px; color: var(--text3); text-transform: uppercase; letter-spacing: 0.6px; margin-bottom: 5px; }
+.metric .mv { font-size: 22px; font-weight: 700; }
+.mv.g { color: var(--green); } .mv.r { color: var(--red); } .mv.b { color: var(--blue); } .mv.a { color: var(--amber); }
+.t-card { background: #fff; border: 1px solid var(--border); border-radius: var(--radius); margin-bottom: 12px; overflow: hidden; }
+.t-top  { display: flex; align-items: center; gap: 10px; padding: 14px 16px; cursor: pointer; border-bottom: 1px solid var(--border); transition: background 0.1s; }
+.t-top:hover { background: var(--bg2); }
+.t-badge { font-size: 10px; font-weight: 700; padding: 3px 9px; border-radius: 20px; white-space: nowrap; text-transform: uppercase; }
+.bh { background: var(--red-bg); color: var(--red); }
+.bm { background: var(--amber-bg); color: var(--amber); }
+.bi { background: var(--blue-bg); color: var(--blue); }
+.t-title { font-size: 14px; font-weight: 600; flex: 1; }
+.t-amt   { font-size: 14px; font-weight: 700; color: var(--green); white-space: nowrap; }
+.t-chev  { color: var(--text3); font-size: 12px; transition: transform 0.2s; }
+.t-card.open .t-chev { transform: rotate(180deg); }
+.t-body  { padding: 16px; display: none; }
+.t-card.open .t-body { display: block; }
+.t-desc  { font-size: 13px; color: var(--text2); line-height: 1.65; margin-bottom: 14px; }
+.meta-grid  { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; margin-bottom: 14px; }
+.meta-cell  { background: var(--bg2); border-radius: var(--radius-sm); padding: 10px 12px; }
+.meta-cell .ml { font-size: 10px; color: var(--text3); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 3px; }
+.meta-cell .mv { font-size: 13px; font-weight: 600; }
+.order-section { margin-bottom: 14px; }
+.order-label   { font-size: 11px; color: var(--text3); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 6px; font-weight: 600; }
+.order-chips   { display: flex; flex-wrap: wrap; gap: 5px; max-height: 80px; overflow-y: auto; }
+.o-chip { font-size: 10px; font-family: monospace; background: var(--bg2); color: var(--text2); padding: 2px 7px; border-radius: 4px; }
+.tmpl-box  { background: var(--bg2); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 14px; margin-bottom: 12px; }
+.tmpl-head { font-size: 11px; color: var(--blue); text-transform: uppercase; letter-spacing: 0.6px; font-weight: 700; margin-bottom: 8px; }
+.tmpl-box pre { font-size: 11px; font-family: monospace; color: var(--text2); line-height: 1.65; white-space: pre-wrap; word-break: break-word; }
+.btn-row { display: flex; gap: 8px; flex-wrap: wrap; }
+.btn-sm  { font-size: 12px; font-weight: 600; padding: 7px 14px; border: 1px solid var(--border2); border-radius: var(--radius-sm); background: #fff; color: var(--text); cursor: pointer; transition: background 0.1s; }
+.btn-sm:hover { background: var(--bg2); }
+.btn-sm.dl { background: var(--green-bg); color: var(--green); border-color: var(--green-border); }
+.btn-sm.dl:hover { background: #dcfce7; }
+.no-issues { background: var(--green-bg); border: 1px solid var(--green-border); border-radius: var(--radius); padding: 16px 20px; font-size: 14px; color: var(--green); font-weight: 600; }
+footer { text-align: center; margin-top: 48px; padding-top: 24px; border-top: 1px solid var(--border); font-size: 12px; color: var(--text3); }
+@media (max-width: 600px) {
+  .reports-grid { grid-template-columns: 1fr; }
+  .summary-grid { grid-template-columns: repeat(2, 1fr); }
+  .meta-grid { grid-template-columns: 1fr; }
+  .wrap { padding: 20px 16px 48px; }
+  .topbar { padding: 12px 16px; }
+}
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <span class="logo">D'Chica × Myntra</span>
+  <span class="tag">Ticket Finder</span>
+</div>
+
+<div class="wrap">
+<h1>Myntra billing error detector</h1>
+<p class="lead">Upload each Myntra Seller Hub report separately below. The tool detects where Myntra has over-charged or under-reversed, then generates the proof file and ticket template for each claim.</p>
+
+<p class="step-label">Step 1 — Upload your Myntra reports</p>
+<div class="reports-grid" id="reportGrid"></div>
+<p class="req-note"><span>*</span> Required &nbsp;·&nbsp; Reports 2, 3 and 4 are minimum to run the analysis</p>
+
+<div class="progress-wrap" id="progWrap"><div class="progress-bar" id="progBar"></div></div>
+<p class="step-label">Step 2 — Run the analysis</p>
+<button class="run-btn" id="runBtn" disabled>Upload reports 2, 3 and 4 to continue</button>
+
+<div class="results" id="results">
+  <div class="summary-grid" id="summGrid"></div>
+  <p class="step-label">Tickets to raise with Myntra</p>
+  <div id="ticketList"></div>
+</div>
+<footer>D'Chica internal tool · All data is processed in your browser — nothing is sent to any server</footer>
+</div>
+
+<script>
+// ── Prevent browser from navigating away when files are dragged outside drop zones ──
+document.addEventListener('dragover', e => e.preventDefault());
+document.addEventListener('drop',     e => e.preventDefault());
+
+// Detection order: specific first (rev before fwd, etc.)
+// kws      = keyword pool; minMatch = minimum hits needed
+// nokws    = any one present → disqualify immediately
+const REPORT_DEFS = [
+  { key:'rev',     num:3, req:true,  name:'Settlement — Reverse',
+    path:'Payments → Settlement → Reverse',
+    desc:'Return settlements: commission reversed, reverse logistics charged',
+    kws:['return net settlement','commission reversed','return payout date','return type'],
+    nokws:[], minMatch:2 },
+
+  { key:'fwd',     num:2, req:true,  name:'Settlement — Forward',
+    path:'Payments → Settlement → Forward',
+    desc:'Commission %, fixed fee, logistics & net payout per delivered order',
+    kws:['commission amt','commission %','payout date','net payout','logistics total','pick&pack'],
+    nokws:['return net settlement','commission reversed','return payout date'], minMatch:2 },
+
+  { key:'returns', num:4, req:true,  name:'Returns & RTO Report',
+    path:'Returns → Return Report → Export',
+    desc:'Return mode (open/closed box), return reason, commission reversal flag',
+    kws:['return mode','return reason','comm reversed','is refunded','return created'],
+    nokws:['commission amt','net payout','return net settlement'], minMatch:2 },
+
+  { key:'sales',   num:1, req:false, name:'Order / Sales Report',
+    path:'Orders → Order Report → Export',
+    desc:'All orders with status, delivery dates, SKUs, selling price',
+    kws:['order release','sub order','order creation','fulfillment','order date',
+         'order delivery','order status','shipment date','payment method',
+         'seller sku','cancellation date','dispatch date'],
+    nokws:['commission amt','commission reversed','return net settlement',
+           'return mode','comm reversed','base cost/unit'], minMatch:2 },
+
+  { key:'cogs',    num:5, req:false, name:'SKU COGS Sheet (internal)',
+    path:'Internal costing file',
+    desc:'Your base cost per Seller SKU — not from Myntra',
+    kws:['base cost/unit','base cost','total cogs','cogs %'],
+    nokws:['commission amt','return net settlement'], minMatch:1 },
+
+  { key:'dvp',     num:6, req:false, name:'Delivered vs Paid (optional)',
+    path:'Payments → Settlement → Delivered vs Paid',
+    desc:'Payout lag: delivery date vs actual payout date per order',
+    kws:['settlement status','days del','payout date','delivery date'],
+    nokws:['commission amt','return net settlement','comm reversed'], minMatch:2 },
+];
+
+const D = {};           // holds parsed rows per report type
+const INPUTS = {};      // holds file input element refs per key
+
+// ── FILE DETECTION ──
+function detectType(headers) {
+  const lh = headers.map(h => (h||'').toLowerCase());
+  let bestKey = null, bestScore = 0;
+  for (const def of REPORT_DEFS) {
+    // Hard exclusion — any nokw present = skip immediately
+    if ((def.nokws||[]).some(w => lh.some(h => h.includes(w)))) continue;
+    // Score = how many kws matched
+    const score = def.kws.filter(w => lh.some(h => h.includes(w))).length;
+    const needed = def.minMatch || 2;
+    if (score >= needed && score > bestScore) {
+      bestScore = score;
+      bestKey   = def.key;
+    }
+  }
+  return bestKey;
+}
+
+function parseBuffer(buf) {
+  const wb = XLSX.read(buf, { type: 'array' });
+  for (const name of wb.SheetNames) {
+    const raw = XLSX.utils.sheet_to_json(wb.Sheets[name], { header: 1, defval: null });
+    if (!raw || raw.length < 2) continue;
+    // Find header row
+    let hi = 0;
+    for (let i = 0; i < Math.min(5, raw.length); i++) {
+      if ((raw[i]||[]).filter(v => v !== null && v !== '').length > 3) { hi = i; break; }
+    }
+    const hdrs = (raw[hi]||[]).map(h => (h||'').trim());
+    const rows = [];
+    for (let i = hi + 1; i < raw.length; i++) {
+      if (!raw[i] || raw[i].every(v => v === null || v === '')) continue;
+      const r = {}; hdrs.forEach((h, j) => { r[h] = raw[i][j]; }); rows.push(r);
+    }
+    if (!rows.length) continue;
+    const type = detectType(Object.keys(rows[0]));
+    if (type) return { type, rows };
+  }
+  return null;
+}
+
+// ── SLOT STATE ──
+function setSlotLoaded(key, filename, rowCount) {
+  const card = document.getElementById('card_' + key);
+  card.classList.add('loaded');
+  card.querySelector('.rc-status').textContent = `✓ ${filename} · ${rowCount.toLocaleString()} rows`;
+  // Make label non-clickable when loaded (clear button handles swap)
+  card.querySelector('.rc-label').style.pointerEvents = 'none';
+}
+
+function clearSlot(key) {
+  delete D[key];
+  const card = document.getElementById('card_' + key);
+  card.classList.remove('loaded');
+  card.querySelector('.rc-status').textContent = 'Click to upload or drag & drop';
+  card.querySelector('.rc-label').style.pointerEvents = '';
+  // Reset the input so the same file can be re-selected
+  const inp = INPUTS[key];
+  if (inp) inp.value = '';
+  updateRunBtn();
+}
+
+function updateRunBtn() {
+  const hasMin = !!(D.fwd && D.rev && D.returns);
+  const btn = document.getElementById('runBtn');
+  btn.disabled = !hasMin;
+  if (hasMin) {
+    const extras = ['sales','cogs','dvp'].filter(k => D[k]).map(k => REPORT_DEFS.find(d => d.key === k).name.split(' ')[0]);
+    btn.textContent = 'Detect tickets' + (extras.length ? ` · also loaded: ${extras.join(', ')}` : '');
+  } else {
+    const missing = ['fwd','rev','returns'].filter(k => !D[k]).map(k => REPORT_DEFS.find(d => d.key === k).name);
+    btn.textContent = `Still needed: ${missing.join(' · ')}`;
+  }
+}
+
+// ── PROCESS A FILE ──
+
+// ── MANUAL TYPE SELECTOR (fallback when auto-detect fails) ──
+function askUserForType(file, expectedKey) {
+  // Build a small modal inline rather than using browser prompt
+  const overlay = document.createElement('div');
+  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.45);z-index:999;display:flex;align-items:center;justify-content:center;';
+
+  const box = document.createElement('div');
+  box.style.cssText = 'background:#fff;border-radius:12px;padding:24px;max-width:420px;width:90%;box-shadow:0 20px 60px rgba(0,0,0,0.2);';
+
+  const opts = REPORT_DEFS.slice().sort((a,b)=>a.num-b.num)
+    .map(d => `<option value="${d.key}"${d.key===expectedKey?' selected':''}>${d.num}. ${d.name}</option>`).join('');
+
+  box.innerHTML = `
+    <p style="font-size:14px;font-weight:600;margin-bottom:4px;color:#111">Could not auto-detect report type</p>
+    <p style="font-size:12px;color:#6b7280;margin-bottom:16px;">The column names in <strong>${file.name}</strong> didn't match any known pattern. Select what this report is:</p>
+    <select id="manualType" style="width:100%;padding:8px 10px;border:1px solid #d1d5db;border-radius:6px;font-size:13px;margin-bottom:16px;">
+      ${opts}
+    </select>
+    <div style="display:flex;gap:8px;justify-content:flex-end;">
+      <button id="manualCancel" style="padding:7px 14px;border:1px solid #d1d5db;border-radius:6px;background:#fff;font-size:13px;cursor:pointer;">Cancel</button>
+      <button id="manualOK"     style="padding:7px 14px;border:none;border-radius:6px;background:#2563eb;color:#fff;font-size:13px;font-weight:600;cursor:pointer;">Load as this report</button>
+    </div>`;
+
+  overlay.appendChild(box);
+  document.body.appendChild(overlay);
+
+  document.getElementById('manualCancel').onclick = () => overlay.remove();
+  document.getElementById('manualOK').onclick = async () => {
+    const chosenKey = document.getElementById('manualType').value;
+    overlay.remove();
+    prog(20);
+    try {
+      const buf = await file.arrayBuffer();
+      prog(60);
+      const wb = XLSX.read(buf, { type:'array' });
+      // Parse first non-empty sheet
+      for (const name of wb.SheetNames) {
+        const raw = XLSX.utils.sheet_to_json(wb.Sheets[name], { header:1, defval:null });
+        if (!raw || raw.length < 2) continue;
+        let hi = 0;
+        for (let i = 0; i < Math.min(5, raw.length); i++) {
+          if ((raw[i]||[]).filter(v => v!==null&&v!=='').length > 3) { hi=i; break; }
+        }
+        const hdrs = (raw[hi]||[]).map(h => (h||'').trim());
+        const rows = [];
+        for (let i = hi+1; i < raw.length; i++) {
+          if (!raw[i]||raw[i].every(v=>v===null||v==='')) continue;
+          const r={}; hdrs.forEach((h,j)=>{r[h]=raw[i][j];}); rows.push(r);
+        }
+        if (!rows.length) continue;
+        D[chosenKey] = rows;
+        setSlotLoaded(chosenKey, file.name, rows.length);
+        updateRunBtn();
+        prog(100);
+        return;
+      }
+      alert('Could not read any data from this file.');
+      prog(100);
+    } catch(err) {
+      alert('Error reading file: ' + err.message);
+      prog(100);
+    }
+  };
+}
+
+async function processFile(file, expectedKey) {
+  try {
+    prog(20);
+    const buf = await file.arrayBuffer();
+    prog(60);
+    const result = parseBuffer(buf);
+    prog(90);
+
+    if (!result) {
+      // Auto-detect failed — ask user to manually pick the report type
+      prog(100);
+      askUserForType(file, expectedKey);
+      return;
+    }
+
+    // Mismatch warning
+    if (expectedKey && result.type !== expectedKey) {
+      const detected = REPORT_DEFS.find(d => d.key === result.type)?.name || result.type;
+      const expected = REPORT_DEFS.find(d => d.key === expectedKey)?.name || expectedKey;
+      const ok = confirm(`This file looks like "${detected}" but was dropped on "${expected}".\n\nLoad it as "${detected}"?`);
+      if (!ok) { prog(100); return; }
+    }
+
+    const key = result.type;
+    D[key] = result.rows;
+    setSlotLoaded(key, file.name, result.rows.length);
+    updateRunBtn();
+    prog(100);
+  } catch (err) {
+    console.error(err);
+    alert(`Error reading "${file.name}": ${err.message}`);
+    prog(100);
+  }
+}
+
+// ── BUILD GRID ──
+function buildGrid() {
+  const grid = document.getElementById('reportGrid');
+  grid.innerHTML = '';
+  // Display in card-number order (1-6); detection order in REPORT_DEFS is separate
+  const displayDefs = [...REPORT_DEFS].sort((a,b) => a.num - b.num);
+
+  displayDefs.forEach(def => {
+    const card = document.createElement('div');
+    card.className = 'report-card' + (def.req ? '' : ' optional');
+    card.id = 'card_' + def.key;
+
+    // Unique IDs for label/input association
+    const inputId = 'fileinput_' + def.key;
+
+    card.innerHTML = `
+      <div class="rc-header">
+        <div class="rc-num">${def.num}</div>
+        <div class="rc-info">
+          <div class="rn">${def.name}${def.req ? ' <span style="color:var(--red)">*</span>' : ''}</div>
+          <div class="rp">${def.desc}</div>
+          <div class="rpath">${def.path}</div>
+        </div>
+      </div>
+      <label class="rc-label" for="${inputId}">
+        <input class="rc-input" type="file" id="${inputId}" accept=".xlsx,.xls">
+        <span class="rc-icon">📂</span>
+        <span class="rc-status">Click to upload or drag &amp; drop</span>
+        <button type="button" class="rc-clear" data-key="${def.key}">✕ Remove</button>
+      </label>`;
+
+    grid.appendChild(card);
+
+    // Store input ref
+    const inp = card.querySelector('.rc-input');
+    INPUTS[def.key] = inp;
+
+    // FILE SELECTED via dialog
+    inp.addEventListener('change', function() {
+      if (this.files && this.files[0]) {
+        processFile(this.files[0], def.key);
+        // Reset value so the same file can trigger change again if re-selected
+        this.value = '';
+      }
+    });
+
+    // DRAG & DROP on label
+    const lbl = card.querySelector('.rc-label');
+
+    lbl.addEventListener('dragenter', e => { e.preventDefault(); e.stopPropagation(); lbl.classList.add('dragover'); });
+    lbl.addEventListener('dragover',  e => { e.preventDefault(); e.stopPropagation(); lbl.classList.add('dragover'); });
+    lbl.addEventListener('dragleave', e => { e.stopPropagation(); lbl.classList.remove('dragover'); });
+    lbl.addEventListener('drop', e => {
+      e.preventDefault(); e.stopPropagation();
+      lbl.classList.remove('dragover');
+      const f = e.dataTransfer?.files?.[0];
+      if (f) processFile(f, def.key);
+    });
+
+    // CLEAR button — must stop propagation so label doesn't re-open dialog
+    const clearBtn = card.querySelector('.rc-clear');
+    clearBtn.addEventListener('click', e => {
+      e.preventDefault(); e.stopPropagation();
+      clearSlot(def.key);
+    });
+  });
+}
+
+// ── PROGRESS ──
+function prog(pct) {
+  const wrap = document.getElementById('progWrap');
+  wrap.style.display = 'block';
+  document.getElementById('progBar').style.width = pct + '%';
+  if (pct >= 100) setTimeout(() => { wrap.style.display = 'none'; }, 400);
+}
+
+// ── XLSX EXPORT ──
+function mkXLSX(data, headers, filename) {
+  const wb = XLSX.utils.book_new();
+  const ws = XLSX.utils.aoa_to_sheet([headers, ...data]);
+  ws['!cols'] = headers.map(h => ({ wch: Math.max((h||'').length + 4, 18) }));
+  XLSX.utils.book_append_sheet(wb, ws, 'Evidence');
+  XLSX.writeFile(wb, filename);
+}
+
+// ── HELPERS ──
+function col(row, ...pats) {
+  const keys = Object.keys(row);
+  for (const p of pats) { const f = keys.find(k => k.toLowerCase().includes(p.toLowerCase())); if (f) return f; }
+  return null;
+}
+function num(row, ...pats) { const k = col(row, ...pats); return k ? (parseFloat(row[k]) || 0) : 0; }
+function str(row, ...pats) { const k = col(row, ...pats); return k ? String(row[k] || '') : ''; }
+function inr(n)             { return '₹' + Math.round(n).toLocaleString('en-IN'); }
+
+// ── TICKET LOGIC ──
+
+function ticket_commNotReversed(ret, sales) {
+  const spMap = {};
+  (sales || []).forEach(r => { spMap[str(r,'order release id','order id')] = num(r,'selling price'); });
+  let retGMV = 0, commRevTotal = 0, affected = [];
+  ret.forEach(r => {
+    const id = str(r,'order id','order release id');
+    const sp = spMap[id] || 0;
+    retGMV += sp;
+    if (str(r,'comm reversed').toUpperCase().includes('NO') || str(r,'comm reversed').includes('❌'))
+      affected.push({ id, sp, date: str(r,'return created','order created') });
+  });
+  if (D.rev) D.rev.forEach(r => { commRevTotal += Math.abs(num(r,'commission reversed')); });
+  const expected = retGMV * 0.183;
+  const gap = Math.max(0, expected - commRevTotal);
+  if (gap < 1 || !affected.length) return null;
+  return {
+    id:'comm_rev', priority:'HIGH',
+    title: `Commission not reversed on ${affected.length} return orders`,
+    amount: Math.round(gap), count: affected.length, orders: affected.map(a => a.id),
+    meta:[['Returns with no reversal', affected.length],['Return GMV', inr(retGMV)],['Should reverse (~18.3%)', inr(expected)],['Shortfall', inr(gap)]],
+    desc: `Of ${ret.length} returns, ${affected.length} had commission not reversed. Expected reversal at ~18.3% of return GMV (${inr(retGMV)}) = ${inr(expected)}. Actually reversed: ${inr(commRevTotal)}. Shortfall: ${inr(gap)}.`,
+    template: `Subject: Commission reversal shortfall — ${affected.length} return orders\n\nHi Myntra Seller Support,\n\n${affected.length} return orders did not receive commission reversal in settlement despite the product being returned.\n\nTotal return GMV: ${inr(retGMV)}\nExpected reversal (18.3%): ${inr(expected)}\nActually reversed: ${inr(commRevTotal)}\nShortfall: ${inr(gap)}\n\nAffected order IDs (first 20): ${affected.slice(0,20).map(a=>a.id).join(', ')}${affected.length>20?` … and ${affected.length-20} more`:''}\n\nFull evidence sheet attached. Please credit ${inr(gap)} to our account.\n\nBrand: D'Chica`,
+    proof: () => mkXLSX(affected.map(a => [a.id, a.date, a.sp.toFixed(2), (a.sp*0.183).toFixed(2), '0.00', (a.sp*0.183).toFixed(2), 'Commission not reversed']),
+      ['Order ID','Return Date','Selling Price (₹)','Should Reverse (₹)','Reversed (₹)','Shortfall (₹)','Issue'],
+      'Proof_1_Commission_Not_Reversed.xlsx')
+  };
+}
+
+function ticket_closedBox(ret, sales) {
+  const spMap = {};
+  (sales || []).forEach(r => { spMap[str(r,'order release id','order id')] = num(r,'selling price'); });
+  const affected = [];
+  ret.forEach(r => {
+    if (!str(r,'return mode').toUpperCase().includes('CLOSED')) return;
+    const flag = str(r,'comm reversed');
+    if (!flag.toUpperCase().includes('NO') && !flag.includes('❌')) return;
+    const id = str(r,'order id','order release id');
+    affected.push({ id, sp: spMap[id] || 0, date: str(r,'return created','order created') });
+  });
+  if (!affected.length) return null;
+  const gmv = affected.reduce((s,a) => s + a.sp, 0);
+  const claim = Math.round(gmv * 0.183);
+  if (claim < 1) return null;
+  return {
+    id:'closed_box', priority:'HIGH',
+    title: `Closed-box returns — commission not reversed (${affected.length} orders)`,
+    amount: claim, count: affected.length, orders: affected.map(a => a.id),
+    meta:[['Closed box returns', affected.length],['Total selling price', inr(gmv)],['Commission owed back', inr(claim)],['Policy basis','Product returned sealed']],
+    desc: `${affected.length} returns were CLOSED BOX pickups — product returned sealed and unused. Myntra policy requires full commission reversal on sealed returns as the product is resalable. This is the strongest ticket since return mode is Myntra's own recorded data.`,
+    template: `Subject: Closed-box returns — commission reversal required (${affected.length} orders)\n\nHi Myntra Seller Support,\n\n${affected.length} return orders were fulfilled as CLOSED BOX pickups, meaning the product was returned sealed. Per Myntra policy, commission must be fully reversed on sealed returns.\n\nOrder IDs:\n${affected.map(a=>a.id).join('\n')}\n\nTotal selling price: ${inr(gmv)}\nCommission to reverse: ${inr(claim)}\n\nEvidence sheet attached. Please process reversal immediately.\n\nBrand: D'Chica`,
+    proof: () => mkXLSX(affected.map(a => [a.id, 'CLOSED_BOX_PICKUP', a.date, a.sp.toFixed(2), (a.sp*0.183).toFixed(2), '0.00', 'Sealed return — commission must be reversed per Myntra policy']),
+      ['Order ID','Return Mode','Return Date','Selling Price (₹)','Commission Owed (₹)','Reversed (₹)','Policy Basis'],
+      'Proof_2_Closed_Box_Returns.xlsx')
+  };
+}
+
+function ticket_fixedFee(fwd, rev) {
+  if (!rev?.length || !fwd?.length) return null;
+  const avgFwdFixed = fwd.reduce((s,r) => s + Math.abs(num(r,'fixed fee')), 0) / fwd.length;
+  const avgRevFixed = rev.reduce((s,r) => s + Math.abs(num(r,'fixed fee')), 0) / rev.length;
+  const perReturn   = avgFwdFixed - avgRevFixed;
+  const total       = Math.round(perReturn * rev.length);
+  if (total < 50) return null;
+  return {
+    id:'fixed_fee', priority:'MEDIUM',
+    title: 'Fixed fee not reversed on return settlements',
+    amount: total, count: rev.length, orders: [],
+    meta:[['Avg fixed fee charged', inr(avgFwdFixed)],['Avg fixed fee reversed', inr(avgRevFixed)],['Retained per return', inr(perReturn)],['Total across all returns', inr(total)]],
+    desc: `Myntra charged avg ${inr(avgFwdFixed)} fixed fee per forward order. On reverse settlements, only ${inr(avgRevFixed)} is reversed on average — Myntra retains ${inr(perReturn)} per return. Across ${rev.length} returns that is ${inr(total)} unrecovered.`,
+    template: `Subject: Fixed fee retention on return orders — ${inr(total)} discrepancy\n\nHi Myntra Seller Support,\n\nThe fixed processing fee charged on forward orders is not being reversed on returns.\n\nAvg fixed fee per forward order: ${inr(avgFwdFixed)}\nAvg fixed fee reversed per return: ${inr(avgRevFixed)}\nFee retained per return: ${inr(perReturn)}\nTotal returns: ${rev.length}\nTotal unrecovered: ${inr(total)}\n\nEvidence sheet attached. Please confirm if fixed fee is non-refundable on returns and if not, credit ${inr(total)} to our account.\n\nBrand: D'Chica`,
+    proof: () => mkXLSX(rev.map(r => {
+        const id = str(r,'order release id','order id');
+        const rf = Math.abs(num(r,'fixed fee'));
+        return [id, str(r,'return date','return payout date'), avgFwdFixed.toFixed(2), rf.toFixed(2), (avgFwdFixed-rf).toFixed(2), 'Fixed fee retained by Myntra'];
+      }), ['Order ID','Return Date','Fixed Fee Charged (₹)','Fixed Fee Reversed (₹)','Amount Kept (₹)','Issue'],
+      'Proof_3_Fixed_Fee_Retained.xlsx')
+  };
+}
+
+function ticket_commRate(fwd) {
+  if (!fwd?.length) return null;
+  const byType = {};
+  fwd.forEach(r => {
+    const art = str(r,'article type'); const sp = num(r,'selling price');
+    const comm = Math.abs(num(r,'commission amt','commission amount'));
+    if (!art || sp === 0) return;
+    if (!byType[art]) byType[art] = { sp:0, comm:0 };
+    byType[art].sp += sp; byType[art].comm += comm;
+  });
+  const avgByType = {};
+  Object.entries(byType).forEach(([k,v]) => { avgByType[k] = v.comm / v.sp * 100; });
+  const affected = []; let totalExcess = 0;
+  fwd.forEach(r => {
+    const art = str(r,'article type'); const sp = num(r,'selling price');
+    const comm = Math.abs(num(r,'commission amt','commission amount'));
+    if (!art || sp === 0) return;
+    const rate = comm / sp * 100; const avg = avgByType[art] || 0;
+    if (rate > avg + 5) {
+      const excess = sp * (rate - avg) / 100; totalExcess += excess;
+      affected.push({ id: str(r,'order release id'), sku: str(r,'dchica sku','master sku'), art, sp, rate, avg, excess });
+    }
+  });
+  if (!affected.length || totalExcess < 100) return null;
+  return {
+    id:'comm_rate', priority:'HIGH',
+    title: `Commission rate overcharge on ${affected.length} orders`,
+    amount: Math.round(totalExcess), count: affected.length, orders: affected.map(a => a.id),
+    meta:[['Orders overcharged', affected.length],['Excess commission', inr(totalExcess)],['Likely cause','Catalogue misclassification'],['Category avg rates', Object.entries(avgByType).map(([k,v])=>`${k} ${v.toFixed(1)}%`).join(' · ')]],
+    desc: `${affected.length} orders were charged commission significantly above the standard rate for their article type — likely Myntra's catalogue has a SKU in a higher-commission sub-category. Total excess: ${inr(totalExcess)}.`,
+    template: `Subject: Commission rate overcharge — catalogue misclassification (${affected.length} orders)\n\nHi Myntra Billing / Catalogue Team,\n\n${affected.length} orders were charged commission above the standard rate for the article type, indicating sub-category misclassification.\n\nTotal excess commission: ${inr(totalExcess)}\n\nSample:\n${affected.slice(0,10).map(a=>`${a.id} | ${a.art} | ₹${a.sp.toFixed(0)} | ${a.rate.toFixed(1)}% charged vs ${a.avg.toFixed(1)}% avg | excess ₹${a.excess.toFixed(0)}`).join('\n')}\n\nFull evidence attached. Please refund excess commission.\n\nBrand: D'Chica`,
+    proof: () => mkXLSX(affected.map(a => [a.id, a.sku, a.art, a.sp.toFixed(2), a.rate.toFixed(2)+'%', a.avg.toFixed(2)+'%', (a.rate-a.avg).toFixed(2)+'pp', a.excess.toFixed(2), 'Rate exceeds category norm']),
+      ['Order ID','SKU','Article Type','Selling Price (₹)','Comm % Charged','Category Avg %','Overcharge (pp)','Excess Commission (₹)','Issue'],
+      'Proof_4_Commission_Rate_Anomaly.xlsx')
+  };
+}
+
+function ticket_highReturn(ret, sales) {
+  const delMap = {}, retMap = {}, retReasons = {};
+  (sales || []).forEach(r => {
+    if (!str(r,'order status').toLowerCase().includes('deliver')) return;
+    const sku = str(r,'master sku','seller sku'); delMap[sku] = (delMap[sku]||0) + 1;
+  });
+  ret.forEach(r => {
+    const sku = str(r,'master sku','seller sku'); retMap[sku] = (retMap[sku]||0) + 1;
+    if (!retReasons[sku]) retReasons[sku] = {};
+    const reason = str(r,'return reason') || 'Unknown';
+    retReasons[sku][reason] = (retReasons[sku][reason]||0) + 1;
+  });
+  const high = [];
+  Object.entries(delMap).forEach(([sku, d]) => {
+    if (d < 3) return;
+    const rv = retMap[sku] || 0; const rate = rv / d * 100;
+    if (rate < 40) return;
+    const top = Object.entries(retReasons[sku]||{}).sort((a,b) => b[1]-a[1])[0];
+    high.push({ sku, d, rv, rate, topReason: top ? top[0] : 'Unknown' });
+  });
+  high.sort((a,b) => b.rate - a.rate);
+  if (!high.length) return null;
+  return {
+    id:'high_ret', priority:'INFO',
+    title: `${high.length} SKUs with ≥40% return rate — pause ads + raise catalogue correction`,
+    amount: 0, count: high.length, orders: [], skus: high,
+    meta:[['High-return SKUs', high.length],['Threshold','≥40% (min 3 delivered)'],['Ticket type','Catalogue correction'],['Escalate to','Myntra catalogue team']],
+    desc: `These SKUs are loss-making once return clawback (~₹661/return) is factored in. Pause Myntra ads immediately. For SKUs where top return reason is size or fit, raise a catalogue correction — incorrect size chart labelling is Myntra's responsibility to fix.`,
+    template: `Subject: High return rates — size chart correction request\n\nHi Myntra Catalogue Team,\n\nThe following SKUs have return rates above 40%, mostly citing size/fit as the reason, indicating possible size chart errors in the listing.\n\nAffected SKUs:\n${high.slice(0,15).map(s=>`${s.sku}: ${s.rv}/${s.d} returned (${s.rate.toFixed(0)}%) — top reason: ${s.topReason}`).join('\n')}${high.length>15?`\n…and ${high.length-15} more (see attached)`:''}\n\nFull evidence attached. Please review and correct size charts for all affected SKUs.\n\nBrand: D'Chica`,
+    proof: () => mkXLSX(high.map(s => [s.sku, s.d, s.rv, s.rate.toFixed(1)+'%', s.topReason, 'Pause ads. Request catalogue correction for size/fit issues.']),
+      ['Master SKU','Units Delivered','Units Returned','Return Rate','Top Return Reason','Recommended Action'],
+      'Proof_5_High_Return_SKUs.xlsx')
+  };
+}
+
+// ── RUN ANALYSIS ──
+function run() {
+  const fwd = D.fwd||[], rev = D.rev||[], ret = D.returns||[], sales = D.sales||[];
+  prog(15);
+
+  const tickets = [
+    ticket_commNotReversed(ret, sales),
+    ticket_closedBox(ret, sales),
+    ticket_fixedFee(fwd, rev),
+    ticket_commRate(fwd),
+    ticket_highReturn(ret, sales),
+  ].filter(Boolean);
+
+  prog(80);
+  window._tickets = tickets;
+
+  const totalRec  = tickets.filter(t => t.amount > 0).reduce((s,t) => s + t.amount, 0);
+  const highCount = tickets.filter(t => t.priority === 'HIGH').length;
+
+  document.getElementById('summGrid').innerHTML = `
+    <div class="metric"><div class="ml">Tickets found</div><div class="mv b">${tickets.length}</div></div>
+    <div class="metric"><div class="ml">High priority</div><div class="mv r">${highCount}</div></div>
+    <div class="metric"><div class="ml">Total recoverable</div><div class="mv g">${inr(totalRec)}</div></div>
+    <div class="metric"><div class="ml">Orders analysed</div><div class="mv a">${fwd.length.toLocaleString()}</div></div>`;
+
+  const list = document.getElementById('ticketList');
+  list.innerHTML = '';
+
+  if (!tickets.length) {
+    list.innerHTML = '<div class="no-issues">✓ No billing anomalies detected in these reports.</div>';
+  } else {
+    tickets.forEach((t, i) => {
+      const bc = t.priority==='HIGH' ? 'bh' : t.priority==='MEDIUM' ? 'bm' : 'bi';
+      const pl = t.priority==='HIGH' ? 'High priority' : t.priority==='MEDIUM' ? 'Medium' : 'Action needed';
+      const metaHtml  = (t.meta||[]).map(([l,v]) => `<div class="meta-cell"><div class="ml">${l}</div><div class="mv">${v}</div></div>`).join('');
+      const orderHtml = (t.orders||[]).length ? `<div class="order-section"><div class="order-label">Affected order IDs (${t.orders.length} total — all included in proof file)</div><div class="order-chips">${t.orders.slice(0,50).map(o=>`<span class="o-chip">${o}</span>`).join('')}${t.orders.length>50?`<span class="o-chip">+${t.orders.length-50} more</span>`:''}</div></div>` : '';
+      const skuHtml   = (t.skus||[]).length  ? `<div class="order-section"><div class="order-label">High-return SKUs (all in proof file)</div><div class="order-chips">${t.skus.map(s=>`<span class="o-chip">${s.sku} (${s.rate.toFixed(0)}%)</span>`).join('')}</div></div>` : '';
+
+      const card = document.createElement('div');
+      card.className = 't-card';
+      card.innerHTML = `
+        <div class="t-top" onclick="this.parentElement.classList.toggle('open')">
+          <span class="t-badge ${bc}">${pl}</span>
+          <span class="t-title">${t.title}</span>
+          ${t.amount > 0 ? `<span class="t-amt">${inr(t.amount)}</span>` : ''}
+          <span class="t-chev">▼</span>
+        </div>
+        <div class="t-body">
+          <p class="t-desc">${t.desc}</p>
+          <div class="meta-grid">${metaHtml}</div>
+          ${orderHtml}${skuHtml}
+          <div class="tmpl-box">
+            <div class="tmpl-head">📋 Ticket template — paste into Myntra Seller Support</div>
+            <pre id="tmpl${i}">${t.template}</pre>
+          </div>
+          <div class="btn-row">
+            <button class="btn-sm" onclick="copyT(${i})">📋 Copy ticket template</button>
+            <button class="btn-sm dl" onclick="dlProof(${i})">⬇ Download proof (.xlsx)</button>
+          </div>
+        </div>`;
+      list.appendChild(card);
+    });
+  }
+
+  prog(100);
+  document.getElementById('results').classList.add('show');
+  document.getElementById('results').scrollIntoView({ behavior:'smooth', block:'start' });
+}
+
+window.copyT = function(i) {
+  navigator.clipboard.writeText(document.getElementById('tmpl'+i).textContent).then(() => {
+    const btns = document.querySelectorAll('.btn-row');
+    const btn  = btns[i]?.querySelector('.btn-sm:first-child');
+    if (btn) { btn.textContent = '✓ Copied!'; setTimeout(() => { btn.textContent = '📋 Copy ticket template'; }, 2000); }
+  });
+};
+window.dlProof = function(i) { window._tickets?.[i]?.proof?.(); };
+
+buildGrid();
+document.getElementById('runBtn').addEventListener('click', run);
+</script>
+</body>
+</html>
