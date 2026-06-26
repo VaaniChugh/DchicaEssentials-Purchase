@@ -9,6 +9,7 @@
     --paper:#e9e1cd;--ink:#23231f;--ink-soft:#5a5648;--chalk:#fbf8ef;
     --rust:#a3402b;--rust-bg:#f1ddd5;--teal:#2f5d52;--teal-bg:#dde9e3;
     --amber:#a87a1e;--amber-bg:#f1e6cd;--purple:#4a235a;--purple-bg:#ead5f5;
+    --magenta:#8b1a4a;--magenta-bg:#f5d5e4;
     --line:#23231f33;
   }
   *{box-sizing:border-box;margin:0;padding:0;}
@@ -48,6 +49,10 @@
   .s4 .tool-stage,.s4 .arrow{color:var(--purple);}
   .s4 .tool-title span{color:var(--purple);}
   .s4 .who-tag{background:var(--purple-bg);color:var(--purple);}
+
+  .s5 .tool-stage,.s5 .arrow{color:var(--magenta);}
+  .s5 .tool-title span{color:var(--magenta);}
+  .s5 .who-tag{background:var(--magenta-bg);color:var(--magenta);}
 
   .flow{display:flex;align-items:center;justify-content:center;gap:12px;margin:12px 0;font-size:10px;color:var(--ink-soft);letter-spacing:.5px;text-transform:uppercase;}
   .flow-line{flex:1;height:1px;background:var(--ink-soft);}
@@ -100,6 +105,18 @@
       <div class="who-tag">Accounts &amp; Purchase Manager</div>
       <div class="tool-desc">Track monthly purchase budgets across Fabric, Packaging, Trims, Finished Product and MCF. Submit and approve purchase requests.</div>
       <div class="tool-when">Accounts sets budgets &middot; Purchase Manager submits requests</div>
+      <div class="arrow">&rarr;</div>
+    </a>
+  </div>
+
+  <div class="section-label" style="margin-top:16px;">Marketplace</div>
+  <div class="tools" style="grid-template-columns:1fr;">
+    <a class="tool-card s5" href="tools/myntra_ticket_finder.html">
+      <div class="tool-stage">Marketplace &middot; Myntra</div>
+      <div class="tool-title">Myntra Ticket <span>Finder</span></div>
+      <div class="who-tag">Marketplace Team</div>
+      <div class="tool-desc">Upload Myntra Seller Hub reports to automatically detect billing errors — commission not reversed, closed-box return claims, fixed fee retention, commission rate overcharges. Generates proof files and ticket templates ready to paste into Myntra Seller Support.</div>
+      <div class="tool-when">Run after each settlement cycle</div>
       <div class="arrow">&rarr;</div>
     </a>
   </div>
