@@ -482,12 +482,17 @@ function inr(n)             { return '₹' + Math.round(n).toLocaleString('en-IN
 // Commission reversal check — handles both column name variants from Myntra
 // ('Comm Reversed?' in custom sheets, 'Is Refunded' in raw Myntra exports)
 function isNotReversed(row) {
-  const v = str(row, 'comm reversed', 'is refunded', 'refunded', 'commission reversed');
+  // Column name varies: 'Comm Reverse', 'Comm Reversed', 'Comm Reversal',
+  // 'Is Refunded', 'Commission Reversed' — search all variants
+  const v = str(row, 'comm reverse', 'is refunded', 'refunded', 'commission reverse');
   if (!v) return false;
-  const u = v.toUpperCase();
-  // "No", "NO", "❌ No", "❌ NO" all mean not reversed
-  // "Yes", "YES", "✅ Yes" mean reversed
-  return u.includes('NO') || v.includes('❌');
+  const u = v.toUpperCase().trim();
+  // Values seen: '❌ NO', '❌ No', '✅ YES', '✅ Yes', 'NO', 'Yes', 'NO', 'YES'
+  // Not reversed = contains NO or ❌
+  // Reversed = contains YES or ✅
+  if (u.includes('YES') || v.includes('✅')) return false; // was reversed, not a problem
+  if (u.includes('NO')  || v.includes('❌')) return true;  // NOT reversed — flag it
+  return false;
 }
 
 // ── TICKET LOGIC ──
