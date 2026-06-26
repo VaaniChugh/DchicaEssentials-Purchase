@@ -478,6 +478,18 @@ function num(row, ...pats) { const k = col(row, ...pats); return k ? (parseFloat
 function str(row, ...pats) { const k = col(row, ...pats); return k ? String(row[k] || '') : ''; }
 function inr(n)             { return '₹' + Math.round(n).toLocaleString('en-IN'); }
 
+
+// Commission reversal check — handles both column name variants from Myntra
+// ('Comm Reversed?' in custom sheets, 'Is Refunded' in raw Myntra exports)
+function isNotReversed(row) {
+  const v = str(row, 'comm reversed', 'is refunded', 'refunded', 'commission reversed');
+  if (!v) return false;
+  const u = v.toUpperCase();
+  // "No", "NO", "❌ No", "❌ NO" all mean not reversed
+  // "Yes", "YES", "✅ Yes" mean reversed
+  return u.includes('NO') || v.includes('❌');
+}
+
 // ── TICKET LOGIC ──
 
 function ticket_commNotReversed(ret, sales) {
@@ -488,7 +500,7 @@ function ticket_commNotReversed(ret, sales) {
     const id = str(r,'order id','order release id');
     const sp = spMap[id] || 0;
     retGMV += sp;
-    if (str(r,'comm reversed').toUpperCase().includes('NO') || str(r,'comm reversed').includes('❌'))
+    if (isNotReversed(r))
       affected.push({ id, sp, date: str(r,'return created','order created') });
   });
   if (D.rev) D.rev.forEach(r => { commRevTotal += Math.abs(num(r,'commission reversed')); });
@@ -514,8 +526,7 @@ function ticket_closedBox(ret, sales) {
   const affected = [];
   ret.forEach(r => {
     if (!str(r,'return mode').toUpperCase().includes('CLOSED')) return;
-    const flag = str(r,'comm reversed');
-    if (!flag.toUpperCase().includes('NO') && !flag.includes('❌')) return;
+    if (!isNotReversed(r)) return;
     const id = str(r,'order id','order release id');
     affected.push({ id, sp: spMap[id] || 0, date: str(r,'return created','order created') });
   });
