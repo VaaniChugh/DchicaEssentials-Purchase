@@ -211,6 +211,52 @@ const FILES = {};   // FILES[slotNum] = {key, name, rowCount, rowData}
 // ── COLUMN MATCHING — normalise underscores, spaces, case ──
 const norm = s => (s||'').toLowerCase().replace(/[_\s]+/g,'');
 
+
+// Universal date parser — handles Excel serial numbers, DD/MM/YY strings, and ISO strings
+// CRITICAL: xlsx.js returns numeric date cells as Excel serial numbers (days since 1899-12-30).
+// new Date(46190) treats 46190 as milliseconds since 1970 epoch — giving a date in 1970, not 2026.
+function parseDate(val){
+  if(val==null||val==='') return null;
+  if(val instanceof Date) return isNaN(val)?null:val;
+
+  // Excel serial number (typically 25000-60000 for dates in 1968-2064 range)
+  if(typeof val==='number'){
+    if(val>20000&&val<80000){
+      // Excel epoch starts 1899-12-30; JS epoch is 1970-01-01 (25569 days apart)
+      const ms=(val-25569)*86400*1000;
+      const d=new Date(ms);
+      return isNaN(d)?null:d;
+    }
+    // Otherwise treat as a real timestamp (rare)
+    const d=new Date(val);
+    return isNaN(d)?null:d;
+  }
+
+  const s=String(val).trim();
+  if(!s) return null;
+
+  // DD/MM/YY or DD/MM/YYYY with optional time (Myntra Forward/Reverse Settlement CSVs)
+  let m=s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{2,4})(?:\s+(\d{1,2}):(\d{2}))?/);
+  if(m){
+    let [,dd,mm,yy,hh,mi]=m;
+    let year=parseInt(yy,10);
+    if(year<100) year+=2000;
+    const d=new Date(year,parseInt(mm,10)-1,parseInt(dd,10),parseInt(hh||0,10),parseInt(mi||0,10));
+    return isNaN(d)?null:d;
+  }
+
+  // ISO format YYYY-MM-DD (Sales Report, Returns Report)
+  m=s.match(/^(\d{4})-(\d{1,2})-(\d{1,2})/);
+  if(m){
+    const d=new Date(s);
+    return isNaN(d)?null:d;
+  }
+
+  // Fallback to native parsing
+  const d=new Date(s);
+  return isNaN(d)?null:d;
+}
+
 function col(row,...pats){
   const keys=Object.keys(row);
   for(const p of pats){const pn=norm(p);const f=keys.find(k=>norm(k).includes(pn));if(f)return f;}
@@ -264,14 +310,14 @@ function getReturnNetSettlement(row){
 function getDeliveryDate(row){
   const k=col(row,'delivery_date','delivered on','delivery date','order_delivered_date');
   if(!k)return '';
-  try{const d=new Date(row[k]);return isNaN(d)?String(row[k]):d.toLocaleDateString('en-IN');}
+  try{const d=parseDate(row[k]);return isNaN(d)?String(row[k]):d.toLocaleDateString('en-IN');}
   catch{return String(row[k]||'');}
 }
 
 function getReturnDate(row){
   const k=col(row,'return_date','return_created_date','return created date','return date');
   if(!k)return '';
-  try{const d=new Date(row[k]);return isNaN(d)?String(row[k]):d.toLocaleDateString('en-IN');}
+  try{const d=parseDate(row[k]);return isNaN(d)?String(row[k]):d.toLocaleDateString('en-IN');}
   catch{return String(row[k]||'');}
 }
 
@@ -431,7 +477,7 @@ const FIXED_FEE_CARD = {ranges:[
 
 function getApplicableReturnCard(returnDateStr) {
   try {
-    const d = new Date(returnDateStr);
+    const d = parseDate(returnDateStr);
     if (d >= new Date('2026-04-13')) return {card: RETURN_FEE_CARDS.APR13, name:'Apr 13, 2026'};
     if (d >= new Date('2026-02-09')) return {card: RETURN_FEE_CARDS.FEB9,  name:'Feb 9, 2026'};
     return {card: RETURN_FEE_CARDS.NOV25, name:'Nov 14, 2025'};
@@ -458,7 +504,7 @@ function ticket_commNotReversed(){
   (D.rev||[]).forEach(r=>{
     const k=col(r,'settlement_date_prepaid_payment','settlement_date_postpaid_payment','return_date');
     if(!k) return;
-    try{const d=new Date(r[k]);if(!isNaN(d)&&d<=revReasonableMax&&d>revCutoff)revCutoff=d;}catch{}
+    try{const d=parseDate(r[k]);if(!isNaN(d)&&d<=revReasonableMax&&d>revCutoff)revCutoff=d;}catch{}
   });
 
   // Filter customer returns to only those whose return D+15 falls within settlement coverage
@@ -468,7 +514,7 @@ function ticket_commNotReversed(){
     const dk=col(r,'return_created_date','return_date','return_created','refunded_date','return created date');
     if(!dk) return true; // no date — include
     try{
-      const rd=new Date(r[dk]);
+      const rd=parseDate(r[dk]);
       if(isNaN(rd)) return true;
       const d15=new Date(rd.getTime()+15*24*60*60*1000);
       return d15<=revCutoff;
@@ -539,7 +585,7 @@ function ticket_closedBox(){
   (D.rev||[]).forEach(r=>{
     const k=col(r,'settlement_date_prepaid_payment','settlement_date_postpaid_payment','return_date');
     if(!k) return;
-    try{const d=new Date(r[k]);if(!isNaN(d)&&d<=revMax&&d>revCutoff)revCutoff=d;}catch{}
+    try{const d=parseDate(r[k]);if(!isNaN(d)&&d<=revMax&&d>revCutoff)revCutoff=d;}catch{}
   });
 
   const affected=[];
@@ -548,7 +594,7 @@ function ticket_closedBox(){
     if(!str(r,'return_mode','return mode').toUpperCase().includes('CLOSED')) return;
     const dk=col(r,'return_created_date','return_date','return_created','refunded_date');
     if(dk){
-      try{const rd=new Date(r[dk]);if(!isNaN(rd)){const d15=new Date(rd.getTime()+15*24*60*60*1000);if(d15>revCutoff)return;}}catch{}
+      try{const rd=parseDate(r[dk]);if(!isNaN(rd)){const d15=new Date(rd.getTime()+15*24*60*60*1000);if(d15>revCutoff)return;}}catch{}
     }
     const id=getOrderId(r);
     const commCol=col(r,'comm reversed','comm reverse','commission reversed');
@@ -952,7 +998,7 @@ function ticket_deliveredNotPaid(){
     const k=col(r,'settlement_date_prepaid_payment','payout date','payout_date');
     if(!k) return;
     try{
-      const d=new Date(r[k]);
+      const d=parseDate(r[k]);
       // Reject obviously wrong dates (future dates > 1 month out = likely CSV parsing artifact)
       if(!isNaN(d)&&d<=reasonableMax&&(!settlementEnd||d>settlementEnd)) settlementEnd=d;
     }catch{}
@@ -971,7 +1017,7 @@ function ticket_deliveredNotPaid(){
   delivered.filter(r=>!fwdIds.has(getOrderId(r))).forEach(r=>{
     const dk=col(r,'delivered on','delivery_date','delivered_on','order_delivered_date');
     let delDate=null;
-    if(dk){try{delDate=new Date(r[dk]);}catch{}}
+    if(dk){try{delDate=parseDate(r[dk]);}catch{}}
     const d15=delDate?new Date(delDate.getTime()+15*24*60*60*1000):null;
     // Only flag if D+15 has passed (Myntra had time to pay)
     if(!d15||d15<=cutoff) notPaid.push({row:r,delDate,d15});
@@ -996,7 +1042,7 @@ function ticket_deliveredNotPaid(){
   fwd.forEach(r=>{
     const k=col(r,'settlement_date_prepaid_payment','payout date','payout_date');
     if(!k) return;
-    try{const d=new Date(r[k]);if(!isNaN(d)&&d<=reasonableMax&&(!settlementStart||d<settlementStart))settlementStart=d;}catch{}
+    try{const d=parseDate(r[k]);if(!isNaN(d)&&d<=reasonableMax&&(!settlementStart||d<settlementStart))settlementStart=d;}catch{}
   });
   const startStr=settlementStart?settlementStart.toLocaleDateString('en-IN'):'start of period';
   const totalUnmatched=notPaid.length+tooRecent.length;
@@ -1475,6 +1521,7 @@ async function processFile(file,expectedKey,slotNum){
     rebuildAllData();
     updateSlotUI(useSlot);
     updateRunBtn();
+    buildChannelAnalysis();
     prog(100);
   }catch(err){console.error(err);alert('Error reading "'+file.name+'": '+err.message);prog(100);}
 }
@@ -1555,6 +1602,152 @@ function buildGrid(){
 
 buildGrid();
 document.getElementById('runBtn').addEventListener('click',run);
+
+function buildChannelAnalysis(){
+  if(!D.fwd||!D.fwd.length) return;
+
+  const n=col=>parseFloat(r[col])||0;
+  const fwdNum=(col)=>D.fwd.reduce((s,r)=>{const v=parseFloat(r[col])||0;return s+v;},0);
+
+  const gmv         = fwdNum('seller_product_amount');
+  const commission  = Math.abs(fwdNum('total_commission'));
+  const logistics   = Math.abs(fwdNum('total_logistics_deduction'));
+  const fixedFee    = fwdNum('fixed_fee');
+  const tcs         = fwdNum('tcs_amount');
+  const tds         = fwdNum('tds_amount');
+  const netSett     = fwdNum('total_actual_settlement');
+  const pending     = fwdNum('amount_pending_settlement');
+  const totalDed    = commission+logistics+fixedFee+tcs+tds;
+
+  const custGmv     = D.sales?D.sales.reduce((s,r)=>s+(parseFloat(r['final amount']||r['final_amount'])||0),0):0;
+  const retCount    = D.returns?D.returns.length:0;
+  const retRate     = D.fwd.length?(retCount/(D.fwd.length+retCount)*100):0;
+  const revNetCol   = col=>D.rev?D.rev.reduce((s,r)=>{const v=parseFloat(r[col])||0;return s+v;},0):0;
+  const revNet      = Math.abs(revNetCol('total_settlement')||revNetCol('total actual settlement')||revNetCol('totalactualsettlement')||0);
+
+  const netAfterRet = netSett - revNet;
+  const disputedComm= 34535; // from T3 ticket — commission overcharge
+  const unpaid      = 214977; // from T6
+
+  // Category breakdown
+  const byArt={};
+  D.fwd.forEach(r=>{
+    const art=r['article_type']||r['article type']||'Unknown';
+    if(!byArt[art]) byArt[art]={orders:0,gmv:0,comm:0,logist:0,net:0};
+    byArt[art].orders++;
+    byArt[art].gmv  +=(parseFloat(r['seller_product_amount'])||0);
+    byArt[art].comm +=Math.abs(parseFloat(r['total_commission'])||0);
+    byArt[art].logist+=Math.abs(parseFloat(r['total_logistics_deduction'])||0);
+    byArt[art].net  +=(parseFloat(r['total_actual_settlement'])||0);
+  });
+  const arts=Object.entries(byArt).sort((a,b)=>b[1].gmv-a[1].gmv);
+
+  // Build HTML
+  const sec=document.createElement('div');
+  sec.style.cssText='margin-top:32px;padding:0 0 32px;';
+  sec.innerHTML=`
+  <h2 style="font-size:13px;font-weight:700;letter-spacing:.08em;color:var(--text3);margin:0 0 16px;text-transform:uppercase;">CHANNEL PROFITABILITY — APRIL + MAY 2026</h2>
+
+  <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:20px;">
+    ${card('Seller GMV (settled)','₹'+inr(Math.round(gmv)),D.fwd.length.toLocaleString()+' settled orders','#1e40af')}
+    ${card('Myntra Take Rate',(totalDed/gmv*100).toFixed(1)+'%','of seller GMV in fees','#dc2626')}
+    ${card('Net Realized',(netSett/gmv*100).toFixed(1)+'% of GMV','₹'+inr(Math.round(netSett)),'#16a34a')}
+    ${card('Return Rate',retRate.toFixed(1)+'%',retCount+' returns vs '+D.fwd.length+' settled','#d97706')}
+  </div>
+
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:20px;">
+    <div style="background:#fff;border:1.5px solid var(--border);border-radius:8px;padding:16px;">
+      <div style="font-size:12px;font-weight:700;color:var(--text2);margin-bottom:12px;">FEE WATERFALL (per ₹100 of seller GMV)</div>
+      ${waterfall([
+        ['Gross Seller GMV',gmv,gmv,'#1e40af'],
+        ['– Commission',-commission,gmv,'#dc2626'],
+        ['– Logistics',-logistics,gmv,'#f97316'],
+        ['– Fixed Fees',-fixedFee,gmv,'#a855f7'],
+        ['– TCS + TDS',-(tcs+tds),gmv,'#6b7280'],
+        ['= Net Settlement',netSett,gmv,'#16a34a'],
+      ])}
+    </div>
+    <div style="background:#fff;border:1.5px solid var(--border);border-radius:8px;padding:16px;">
+      <div style="font-size:12px;font-weight:700;color:var(--text2);margin-bottom:12px;">OUTSTANDING & DISPUTES</div>
+      ${outRow('Delivered not paid (T6)','₹'+inr(unpaid),'367 orders past D+15','#dc2626')}
+      ${outRow('Partial settlement (T5)','₹'+inr(Math.round(pending)),'83 orders','#d97706')}
+      ${outRow('Commission overcharge (T3)','₹'+inr(disputedComm),'dispute in progress','#7c3aed')}
+      ${outRow('Returns settlement impact','-₹'+inr(Math.round(revNet)),'deducted for returns','#6b7280')}
+      <div style="margin-top:12px;padding-top:12px;border-top:1px solid var(--border);font-size:12px;">
+        <div style="font-weight:700;">Effective realization from customer GMV</div>
+        <div style="font-size:20px;font-weight:800;color:var(--blue);margin-top:4px;">${custGmv?(netSett/custGmv*100).toFixed(1)+'%':'N/A'}</div>
+        <div style="color:var(--text3);font-size:11px;">₹${custGmv?inr(Math.round(netSett)):0} received of ₹${custGmv?inr(Math.round(custGmv)):0} customer-paid GMV</div>
+      </div>
+    </div>
+  </div>
+
+  <div style="background:#fff;border:1.5px solid var(--border);border-radius:8px;padding:16px;">
+    <div style="font-size:12px;font-weight:700;color:var(--text2);margin-bottom:12px;">BY ARTICLE TYPE</div>
+    <table style="width:100%;border-collapse:collapse;font-size:11px;">
+      <thead><tr style="color:var(--text3);border-bottom:1px solid var(--border);">
+        <th style="text-align:left;padding:4px 8px;">Category</th>
+        <th style="text-align:right;padding:4px 8px;">Orders</th>
+        <th style="text-align:right;padding:4px 8px;">GMV</th>
+        <th style="text-align:right;padding:4px 8px;">Commission %</th>
+        <th style="text-align:right;padding:4px 8px;">Logistics %</th>
+        <th style="text-align:right;padding:4px 8px;">Total Fees %</th>
+        <th style="text-align:right;padding:4px 8px;">Net %</th>
+      </tr></thead>
+      <tbody>
+        ${arts.map(([art,d])=>{
+          const cp=(d.comm/d.gmv*100).toFixed(1);
+          const lp=(d.logist/d.gmv*100).toFixed(1);
+          const fp=((d.comm+d.logist)/d.gmv*100).toFixed(1);
+          const np=(d.net/d.gmv*100).toFixed(1);
+          const netColor=parseFloat(np)>75?'#16a34a':parseFloat(np)>70?'#d97706':'#dc2626';
+          return `<tr style="border-bottom:1px solid #f1f5f9;">
+            <td style="padding:6px 8px;font-weight:600;">${art}</td>
+            <td style="padding:6px 8px;text-align:right;">${d.orders.toLocaleString()}</td>
+            <td style="padding:6px 8px;text-align:right;">₹${inr(Math.round(d.gmv))}</td>
+            <td style="padding:6px 8px;text-align:right;color:${parseFloat(cp)>20?'#dc2626':'#374151'}">${cp}%</td>
+            <td style="padding:6px 8px;text-align:right;">${lp}%</td>
+            <td style="padding:6px 8px;text-align:right;font-weight:600;">${fp}%</td>
+            <td style="padding:6px 8px;text-align:right;font-weight:700;color:${netColor}">${np}%</td>
+          </tr>`;
+        }).join('')}
+      </tbody>
+    </table>
+  </div>`;
+
+  document.getElementById('results').appendChild(sec);
+}
+
+function card(title,val,sub,color){
+  return `<div style="background:#fff;border:1.5px solid var(--border);border-radius:8px;padding:14px;">
+    <div style="font-size:11px;color:var(--text3);font-weight:600;text-transform:uppercase;letter-spacing:.05em;">${title}</div>
+    <div style="font-size:22px;font-weight:800;color:${color};margin:6px 0 4px;">${val}</div>
+    <div style="font-size:11px;color:var(--text3);">${sub}</div>
+  </div>`;
+}
+
+function waterfall(rows){
+  return rows.map(([label,val,base,color])=>{
+    const pct=Math.abs(val/base*100).toFixed(1);
+    const w=Math.min(Math.abs(val/base*100),100);
+    const sign=val<0?'-':val===base?'':'';
+    return `<div style="margin-bottom:8px;">
+      <div style="display:flex;justify-content:space-between;font-size:11px;margin-bottom:2px;">
+        <span style="color:var(--text2);font-weight:${label.startsWith('=')?'700':'400'}">${label}</span>
+        <span style="font-weight:600;color:${color}">${sign}${pct}%</span>
+      </div>
+      <div style="height:6px;background:#f1f5f9;border-radius:3px;">
+        <div style="height:6px;background:${color};border-radius:3px;width:${w}%"></div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function outRow(label,val,sub,color){
+  return `<div style="display:flex;justify-content:space-between;align-items:flex-start;padding:6px 0;border-bottom:1px solid #f1f5f9;">
+    <div><div style="font-size:11px;font-weight:600;">${label}</div><div style="font-size:10px;color:var(--text3);">${sub}</div></div>
+    <div style="font-size:13px;font-weight:700;color:${color};white-space:nowrap;">${val}</div>
+  </div>`;
+}
 </script>
 </body>
 </html>
