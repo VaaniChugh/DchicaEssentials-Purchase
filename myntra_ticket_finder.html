@@ -567,7 +567,7 @@ function ticket_commNotReversed(){
     amount:claimAmt,count:affected.length,orders:affected.map(a=>a.id),
     meta:[['Customer returns checked',customerRet.length],['Commission reversed correctly',reversedCount],['Not reversed',affected.length],['Estimated claim',inr(claimAmt)]],
     desc:affected.length+' customer returns have no commission reversal entry in the Reverse Settlement. Avg commission per return: '+inr(Math.round(avgComm))+'. Total claim: '+inr(claimAmt)+'.',
-    template:'Subject: Commission not reversed on returns — '+affected.length+' orders, '+inr(claimAmt)+'\\n\\nHi Myntra Seller Support,\\n\\n'+affected.length+' customer returns have no commission reversal in our Reverse Settlement (April + May).\\n\\n'+'Returns checked: '+customerRet.length+'\\nReversed correctly: '+reversedCount+'\\nNot reversed: '+affected.length+'\\nClaim: '+inr(claimAmt)+'\\n\\nPREEMPTING STANDARD RESPONSES:'+'\\n\\n1. CHECK JUNE: If reversal was in June, share June Reverse Settlement with these order_line_ids within 5 business days. Do not close citing reversal pending without the export.'+'\\n\\n2. QC REJECTION: All returns in our proof have return_mode = customer return per Myntra own MDirect Returns Report (not warehouse-rejected, not quality-failed). If any order was QC-rejected post-pickup, provide the QC rejection report for that specific order_line_id. Blanket QCF responses without order-level proof will not be accepted.'+'\\n\\n3. IN TRANSIT: Return dates are from Myntra own returns data. If any return is still in transit, provide current logistics status for that order_line_id.'+'\\n\\nFirst 20 order line IDs:\\n'+affected.slice(0,20).map(a=>a.id).join('\\n')+'\\n\\nFull evidence attached.\\n\\nBrand: D\u2019Chica',
+    template:'Subject: Commission not reversed on returns — '+affected.length+' orders, '+inr(claimAmt)+'\\n\\nHi Myntra Seller Support,\\n\\n'+affected.length+' customer returns have no commission reversal in our Reverse Settlement (April + May).\\n\\n'+'Returns checked: '+customerRet.length+'\\nReversed correctly: '+reversedCount+'\\nNot reversed: '+affected.length+'\\nClaim: '+inr(claimAmt)+'\\n\\nPREEMPTING STANDARD RESPONSES:'+'\\n\\n1. CHECK JUNE: If reversal was in June, share June Reverse Settlement with these order_line_ids within 5 business days. Do not close citing reversal pending without the export.'+'\\n\\n2. QC REJECTION: All returns in our proof have return_mode = customer return per Myntra own MDirect Returns Report (not warehouse-rejected, not quality-failed). If any order was QC-rejected post-pickup, provide the QC rejection report for that specific order_line_id. Blanket QCF responses without order-level proof will not be accepted.'+'\\n\\n3. IN TRANSIT: Return dates are from Myntra own returns data. If any return is still in transit, provide current logistics status for that order_line_id.'+'\\n\\nFirst 20 order line IDs:\\n'+affected.slice(0,20).map(a=>a.id).join('\\n')+'\\n\\nFull evidence attached.\\n\\nREPORT-SWITCHING DEFENSE: If Myntra responds by citing any other report (Settled_Report (Revamped), Unsettled_Report (Revamped), B2C_Report, PG Forward/Reverse Settled, PG Forward/Reverse Unsettled, Commission Invoice, Logistics Invoice, Royalty Data, or any other report not already part of this evidence) as showing a different status for these orders, that report must include the matching order_line_id alongside the claimed status. An aggregate invoice total, a report in a different format, or a status claim without order_line_id-level matching does not constitute valid rebuttal evidence. We will independently cross-verify any such report against the order_line_ids in this ticket.\n\nBrand: D\u2019Chica',
     proof:()=>mkXLSX(affected.map(a=>{const fr=fwdMap[a.id];const comm=(fr?getCommission(fr):avgComm).toFixed(2);return[a.id,a.date||'',comm,'0.00','Commission charged on sale, not reversed on return'];}),
       ['Order ID','Return Date','Commission Should Reverse (\u20b9)','Reversed (\u20b9)','Issue'],'Proof_1_Comm_Not_Reversed.xlsx')
   };
@@ -613,7 +613,7 @@ function ticket_closedBox(){
     amount:claim,count:affected.length,orders:affected.map(a=>a.id),
     meta:[['Closed box orders',affected.length],['Commission owed back',inr(claim)],['Policy basis','Product returned sealed — strongest ticket']],
     desc:affected.length+' returns were CLOSED BOX pickups — sealed product. Commission must be fully reversed per Myntra policy. None appear in Reverse Settlement.',
-    template:'Subject: Closed-box returns — commission reversal mandatory ('+affected.length+' orders, '+inr(claim)+')'+'\\n\\nHi Myntra Seller Support,\\n\\n'+affected.length+' returns picked up as CLOSED_BOX_PICKUP. Commission must be reversed per Myntra policy on sealed returns.\\n\\nOrders: '+affected.length+'\\nClaim: '+inr(claim)+'\\n\\nPREEMPTING STANDARD RESPONSES:'+'\\n\\n1. NOT VERIFIED AS CLOSED BOX: CLOSED_BOX_PICKUP return mode is from Myntra own MDirect Returns Report. This is Myntra classification, not ours.'+'\\n\\n2. CONDITION NOT CONFIRMED: Myntra seller policy mandates commission reversal on sealed returns regardless of condition assessment. Product was never opened. Please cite the specific policy clause if commission is retainable on an unopened return.'+'\\n\\n3. REVERSAL IN JUNE: If reversed in June, provide June Reverse Settlement with these order_line_ids within 5 business days.'+'\\n\\nOrder IDs:\\n'+affected.slice(0,30).map(a=>a.id).join('\\n')+'\\n\\nFull evidence attached.\\n\\nBrand: D\u2019Chica',
+    template:'Subject: Closed-box returns — commission reversal mandatory ('+affected.length+' orders, '+inr(claim)+')'+'\\n\\nHi Myntra Seller Support,\\n\\n'+affected.length+' returns picked up as CLOSED_BOX_PICKUP. Commission must be reversed per Myntra policy on sealed returns.\\n\\nOrders: '+affected.length+'\\nClaim: '+inr(claim)+'\\n\\nPREEMPTING STANDARD RESPONSES:'+'\\n\\n1. NOT VERIFIED AS CLOSED BOX: CLOSED_BOX_PICKUP return mode is from Myntra own MDirect Returns Report. This is Myntra classification, not ours.'+'\\n\\n2. CONDITION NOT CONFIRMED: Myntra seller policy mandates commission reversal on sealed returns regardless of condition assessment. Product was never opened. Please cite the specific policy clause if commission is retainable on an unopened return.'+'\\n\\n3. REVERSAL IN JUNE: If reversed in June, provide June Reverse Settlement with these order_line_ids within 5 business days.'+'\\n\\nOrder IDs:\\n'+affected.slice(0,30).map(a=>a.id).join('\\n')+'\\n\\nFull evidence attached.\\n\\nREPORT-SWITCHING DEFENSE: If Myntra responds by citing any other report (Settled_Report (Revamped), Unsettled_Report (Revamped), B2C_Report, PG Forward/Reverse Settled, PG Forward/Reverse Unsettled, Commission Invoice, Logistics Invoice, Royalty Data, or any other report not already part of this evidence) as showing a different status for these orders, that report must include the matching order_line_id alongside the claimed status. An aggregate invoice total, a report in a different format, or a status claim without order_line_id-level matching does not constitute valid rebuttal evidence. We will independently cross-verify any such report against the order_line_ids in this ticket.\n\nBrand: D\u2019Chica',
     proof:()=>mkXLSX(affected.map(a=>[a.id,'CLOSED_BOX_PICKUP',a.date||'',a.comm.toFixed(2),'0.00','Sealed return — commission must reverse']),
       ['Order ID','Return Mode','Return Date','Commission Owed (₹)','Reversed (₹)','Issue'],'Proof_2_Closed_Box.xlsx')
   };
@@ -656,7 +656,7 @@ function ticket_commRate(){
     amount:Math.round(totalExcess),count:affected.length,orders:affected.map(a=>a.id),
     meta:[['Orders overcharged',affected.length],['Excess commission',inr(totalExcess)],['Detection',useRateCard?'Contracted rate card':'Statistical avg'],['Evidence strength',useRateCard?'Strong \u2014 contract breach':'Medium \u2014 pattern based']],
     desc:affected.length+' orders charged commission above '+(useRateCard?'contracted rate':'category average')+'. Total excess: '+inr(totalExcess)+'.',
-    template:'Subject: Commission overcharge vs Seller Terms — '+affected.length+' orders, '+inr(Math.round(totalExcess))+(useRateCard?' [Rate Card Attached]':'')+'\\n\\nHi Myntra Billing Team,\\n\\n'+affected.length+' orders show commission above contracted Seller Terms rate.\\n\\n'+'Total excess: '+inr(Math.round(totalExcess))+'\\nDetection: '+(useRateCard?'Rate card (Seller Terms, effective 26-Jun-2026)':'Statistical >5pp above category average')+'\\n\\nSample:\\n'+affected.slice(0,8).map(a=>a.id+' | '+a.art+' | ₹'+a.sp.toFixed(0)+' | Charged: '+a.rate.toFixed(1)+'% | Contracted: '+a.contractedRate.toFixed(1)+'% | Excess: ₹'+a.excess.toFixed(0)).join('\\n')+'\\n\\nPREEMPTING STANDARD RESPONSES:'+'\\n\\n1. WRONG CATEGORY / LISTING ERROR: Article type in our proof is from Myntra OWN Forward Settlement (article_type column). We have not inferred any category. To dispute: provide (a) order_line_id, (b) correct article_type from your catalogue, (c) applicable rate under our Seller Terms for that category. Each order addressed individually. Blanket listing error response not accepted.'+'\\n\\n2. RATE CARD NOT APPLICABLE TO APRIL-MAY: Our rate card is effective 26-Jun-2026. If a different rate applied for April-May 2026, share that rate card within 5 business days. Without a counter rate card, current contracted rate is the reference. Note: our statistical analysis shows 5+ pp anomalies above same article type average within the same settlement cycle, which holds regardless of rate card version.'+'\\n\\n3. PROMOTIONAL CAMPAIGN OVERRIDE: If any orders were under a campaign with different commission, provide: campaign name, applicable rate, and list of order_line_ids covered. Campaign rate overrides must be pre-communicated to the seller.'+'\\n\\nWe request credit of '+inr(Math.round(totalExcess))+' within 7 business days.\\n\\nBrand: D\u2019Chica',
+    template:'Subject: Commission overcharge vs Seller Terms — '+affected.length+' orders, '+inr(Math.round(totalExcess))+(useRateCard?' [Rate Card Attached]':'')+'\\n\\nHi Myntra Billing Team,\\n\\n'+affected.length+' orders show commission above contracted Seller Terms rate.\\n\\n'+'Total excess: '+inr(Math.round(totalExcess))+'\\nDetection: '+(useRateCard?'Rate card (Seller Terms, effective 26-Jun-2026)':'Statistical >5pp above category average')+'\\n\\nSample:\\n'+affected.slice(0,8).map(a=>a.id+' | '+a.art+' | ₹'+a.sp.toFixed(0)+' | Charged: '+a.rate.toFixed(1)+'% | Contracted: '+a.contractedRate.toFixed(1)+'% | Excess: ₹'+a.excess.toFixed(0)).join('\\n')+'\\n\\nPREEMPTING STANDARD RESPONSES:'+'\\n\\n1. WRONG CATEGORY / LISTING ERROR: Article type in our proof is from Myntra OWN Forward Settlement (article_type column). We have not inferred any category. To dispute: provide (a) order_line_id, (b) correct article_type from your catalogue, (c) applicable rate under our Seller Terms for that category. Each order addressed individually. Blanket listing error response not accepted.'+'\\n\\n2. RATE CARD NOT APPLICABLE TO APRIL-MAY: Our rate card is effective 26-Jun-2026. If a different rate applied for April-May 2026, share that rate card within 5 business days. Without a counter rate card, current contracted rate is the reference. Note: our statistical analysis shows 5+ pp anomalies above same article type average within the same settlement cycle, which holds regardless of rate card version.'+'\\n\\n3. PROMOTIONAL CAMPAIGN OVERRIDE: If any orders were under a campaign with different commission, provide: campaign name, applicable rate, and list of order_line_ids covered. Campaign rate overrides must be pre-communicated to the seller.'+'\\n\\nWe request credit of '+inr(Math.round(totalExcess))+' within 7 business days.\\n\\nREPORT-SWITCHING DEFENSE: If Myntra responds by citing any other report (Settled_Report (Revamped), Unsettled_Report (Revamped), B2C_Report, PG Forward/Reverse Settled, PG Forward/Reverse Unsettled, Commission Invoice, Logistics Invoice, Royalty Data, or any other report not already part of this evidence) as showing a different status for these orders, that report must include the matching order_line_id alongside the claimed status. An aggregate invoice total, a report in a different format, or a status claim without order_line_id-level matching does not constitute valid rebuttal evidence. We will independently cross-verify any such report against the order_line_ids in this ticket.\n\nBrand: D\u2019Chica',
     proof:()=>mkXLSX(affected.map(a=>{
       let cite=a.method;
       if(a.method==='Rate Card'&&D.ratecard&&D.ratecard.commission.length){
@@ -978,6 +978,8 @@ Affected order IDs (first 20): ${pending.slice(0,20).map(a=>a.id).join(', ')}
 
 Please confirm when these amounts will be released and whether any customer payment or dispute is holding them.
 
+PREEMPTING NON-ORDER DEDUCTION DEFENSE: Myntra’s own Non-Order Settlement report contains no order_line_id field whatsoever — every entry is an account-level reference code (e.g. MDMKAI27F0001461MI) with no linkage to any specific order. Therefore Myntra cannot cite a non-order/marketing/MDMKAI deduction as justification for a shortfall on any specific order_line_id in this ticket, because no such linkage exists in Myntra’s own data structure. If Myntra claims a specific order’s settlement was reduced due to a non-order charge, they must produce documentary proof connecting that exact order_line_id to that exact deduction — which their own report format does not support. Absent such proof, the shortfall stands as unexplained and payable in full.
+
 Brand: D’Chica`,
     proof:()=>mkXLSX(
       pending.map(a=>[a.id,a.art,a.delDate,a.sp.toFixed(2),a.expected.toFixed(2),a.actual.toFixed(2),a.pending.toFixed(2),'amount_pending_settlement > 0']),
@@ -990,59 +992,66 @@ function ticket_deliveredNotPaid(){
   const sales=D.sales||[], fwd=D.fwd||[];
   if(!sales.length||!fwd.length) return null;
 
-  // Find settlement coverage end date (max payout date across all uploaded settlements)
+  // Settlement coverage end = latest valid settlement_date_prepaid_payment in fwd data
+  // CRITICAL: reject null/NaN dates explicitly (do not let !isNaN(null) coerce to true)
   let settlementEnd=null;
-  const today=new Date();
-  const reasonableMax=new Date(today.getFullYear(), today.getMonth()+1, 0); // end of current month
   fwd.forEach(r=>{
     const k=col(r,'settlement_date_prepaid_payment','payout date','payout_date');
     if(!k) return;
-    try{
-      const d=parseDate(r[k]);
-      // Reject obviously wrong dates (future dates > 1 month out = likely CSV parsing artifact)
-      if(!isNaN(d)&&d<=reasonableMax&&(!settlementEnd||d>settlementEnd)) settlementEnd=d;
-    }catch{}
+    const d=parseDate(r[k]);
+    if(d instanceof Date && !isNaN(d.getTime())){
+      const reasonableMax=new Date(2026,11,31); // hard sanity cap, not "today+1month" which drifts
+      if(d<=reasonableMax && (!settlementEnd||d>settlementEnd)) settlementEnd=d;
+    }
   });
-  const cutoff=settlementEnd||today;
+  const cutoff=settlementEnd;
+  if(!cutoff) return null; // can't compute D+15 without a real cutoff
 
-  // Use order_line_id for cross-reference (universal key across all Myntra files)
-  const fwdIds=new Set(fwd.map(r=>getOrderId(r)));
+  const fwdIds=new Set(fwd.map(r=>getOrderId(r)).filter(id=>id));
   const delivered=sales.filter(isDelivered);
   if(!delivered.length) return null;
 
-  // Flag any delivered order not in ANY uploaded settlement where D+15 <= cutoff
-  // Note: May settlement covers April orders (verified - 839 April orders ARE settled)
-  // The ones NOT in settlement are genuinely unpaid regardless of D+15 date
-  const notPaid=[], tooRecent=[];
-  delivered.filter(r=>!fwdIds.has(getOrderId(r))).forEach(r=>{
+  const notPaid=[], tooRecent=[], noDeliveryDate=[];
+  delivered.filter(r=>{
+    const id=getOrderId(r);
+    return id && !fwdIds.has(id);
+  }).forEach(r=>{
     const dk=col(r,'delivered on','delivery_date','delivered_on','order_delivered_date');
-    let delDate=null;
-    if(dk){try{delDate=parseDate(r[dk]);}catch{}}
-    const d15=delDate?new Date(delDate.getTime()+15*24*60*60*1000):null;
-    // Only flag if D+15 has passed (Myntra had time to pay)
-    if(!d15||d15<=cutoff) notPaid.push({row:r,delDate,d15});
-    else tooRecent.push({row:r,delDate,d15});
+    const delDate = dk ? parseDate(r[dk]) : null;
+    // CRITICAL FIX: if delDate is missing/invalid, do NOT default to "overdue".
+    // Exclude from notPaid entirely — we cannot prove D+15 has passed without a real delivery date.
+    if(!(delDate instanceof Date) || isNaN(delDate.getTime())){
+      noDeliveryDate.push({row:r});
+      return;
+    }
+    const d15=new Date(delDate.getTime()+15*24*60*60*1000);
+    if(d15<=cutoff){
+      notPaid.push({row:r,delDate,d15});
+    } else {
+      tooRecent.push({row:r,delDate,d15});
+    }
   });
 
   if(!notPaid.length) return null;
-  // Days-past-D+15 stats
-  const daysList=notPaid.map(({d15})=>d15?Math.round((cutoff-d15)/864e5):0).filter(d=>d>0);
+
+  const daysList=notPaid.map(({d15})=>Math.round((cutoff-d15)/864e5)).filter(d=>d>0);
   const minDays=daysList.length?Math.min(...daysList):0;
   const maxDays=daysList.length?Math.max(...daysList):0;
   const avgDays=daysList.length?Math.round(daysList.reduce((s,d)=>s+d,0)/daysList.length):0;
   const gmv=notPaid.reduce((s,a)=>s+getSP(a.row),0);
   const byMonth={};
-  notPaid.forEach(({row,delDate})=>{
-    const m=delDate?delDate.getFullYear()+'-'+String(delDate.getMonth()+1).padStart(2,'0'):'Unknown';
+  notPaid.forEach(({delDate})=>{
+    const m=delDate.getFullYear()+'-'+String(delDate.getMonth()+1).padStart(2,'0');
     byMonth[m]=(byMonth[m]||0)+1;
   });
-  const endStr=settlementEnd?settlementEnd.toLocaleDateString('en-IN'):'today';
-  // Compute settlement start (earliest payout date)
+  const endStr=cutoff.toLocaleDateString('en-IN');
+
   let settlementStart=null;
   fwd.forEach(r=>{
     const k=col(r,'settlement_date_prepaid_payment','payout date','payout_date');
     if(!k) return;
-    try{const d=parseDate(r[k]);if(!isNaN(d)&&d<=reasonableMax&&(!settlementStart||d<settlementStart))settlementStart=d;}catch{}
+    const d=parseDate(r[k]);
+    if(d instanceof Date && !isNaN(d.getTime()) && d<=cutoff && (!settlementStart||d<settlementStart)) settlementStart=d;
   });
   const startStr=settlementStart?settlementStart.toLocaleDateString('en-IN'):'start of period';
   const totalUnmatched=notPaid.length+tooRecent.length;
@@ -1055,24 +1064,25 @@ function ticket_deliveredNotPaid(){
     meta:[
       ['Settlement coverage up to',endStr],
       ['Delivered orders checked',delivered.length],
-      ['Settled & paid',delivered.length-totalUnmatched],
+      ['Settled & paid',delivered.length-totalUnmatched-noDeliveryDate.length],
       ['Not settled — past D+15',notPaid.length],
       ['Days past D+15 (min / avg / max)',minDays+' / '+avgDays+' / '+maxDays+' days'],
+      ['Excluded (no valid delivery date)',noDeliveryDate.length],
     ],
-    desc:notPaid.length+' orders confirmed delivered do not appear in any uploaded Forward Settlement. Settlement coverage up to '+endStr+'. Days past D+15: min='+minDays+', avg='+avgDays+', max='+maxDays+'. Delivery breakdown: '+Object.entries(byMonth).sort().map(([m,c])=>m+': '+c).join(', ')+'.'+
-      (tooRecent.length>0?' '+tooRecent.length+' additional orders within D+15 will appear in next settlement cycle.':''  ),
-    template:'Subject: Delivered orders not settled — '+notPaid.length+' orders, '+inr(Math.round(gmv))+' — Response required by 10 July 2026'+'\n\n'+'Hi Myntra Payments Team,'+'\n\n'+notPaid.length+' delivered orders are absent from all Forward Settlement reports. These breach your D+15 SLA by '+minDays+' to '+maxDays+' days (avg: '+avgDays+' days).'+'\n\n'+'Settlement verified: '+startStr+' to '+endStr+'\nOrders not settled (past D+15): '+notPaid.length+'\nGMV outstanding: '+inr(Math.round(gmv))+'\nDays past D+15: min='+minDays+' / avg='+avgDays+' / max='+maxDays+'\n\nDelivery breakdown:\n'+Object.entries(byMonth).sort().map(([m,c])=>m+': '+c).join('\\n')+'\n\nD+15 SLA BREACH \u2014 EXPLANATION REQUIRED:\\nMyntra settlement policy commits to payment within D+15 from delivery confirmation. These orders breached that SLA by '+minDays+' to '+maxDays+' days (avg: '+avgDays+' days). This is a contractual breach independent of eventual payment.\\nWe require written explanation within 5 business days:\\n(a) Why was the D+15 SLA breached for these specific orders?\\n(b) Was there a systemic issue affecting these order_line_ids?\\n(c) What remediation prevents recurrence?\\nEventual payment in a future cycle does NOT close the SLA breach. Both must be addressed separately.\\n\\nPREEMPTING \u201CCHECK JUNE SETTLEMENT\u201D RESPONSE:\n- June 2026 Forward Settlement is expected by 7 July 2026.\n- If any of these orders were paid in June, provide the June Forward Settlement showing the specific order_line_ids with payout dates.\n- This must be provided within 5 business days. Do not close this ticket citing \u201Cthey may be in June\u201D without order-level documentary evidence.\n- If June settlement is not produced by 10 July 2026 with matching order_line_ids, these orders remain outstanding and we will escalate to Seller Support Head.\n\nFirst 20 order line IDs: '+notPaid.slice(0,20).map(a=>getOrderId(a.row)).join(', ')+'\n\nEvidence attached sorted by most overdue.\n\nADDITIONAL PREEMPTIONS:\\n\\n4. RETURNED AFTER DELIVERY: Cross-checked against April and May Returns and RTO Report. None of these order_line_ids appear in returns data. If any was returned post-delivery, provide returns documentation with order_line_id and return date.\\n\\n5. CANCELLED POST-DELIVERY: Status in Myntra own Sale Order Report is Delivered. If subsequently cancelled in Myntra system, provide updated order record with timestamp.\\n\\nBrand: D\u2019Chica',
+    desc:notPaid.length+' orders confirmed delivered do not appear in any uploaded Forward Settlement. Settlement coverage up to '+endStr+'. Days past D+15: min='+minDays+', avg='+avgDays+', max='+maxDays+'. Delivery breakdown: '+Object.entries(byMonth).sort().map(([m,c])=>m+': '+c).join(', ')+'.',
+    D15_SLA_BREACH_NOTE:'D+15 SLA BREACH — EXPLANATION REQUIRED: As per our seller tier agreement (Bronze tier), payment is committed within D+15 of delivery confirmation. These orders breached that SLA by '+minDays+' to '+maxDays+' days (avg: '+avgDays+' days). This is a contractual breach independent of eventual payment. We require written explanation within 5 business days: (a) Why was the D+15 SLA breached for these specific orders? (b) Was there a systemic issue affecting these order_line_ids? (c) What remediation prevents recurrence? Eventual payment in a future settlement cycle does not cure this breach — the D+15 commitment is measured from delivery, not from whenever payment happens to land. Confirmation of payment in June does not retroactively satisfy a May obligation. Both the breach explanation and the payment itself must be addressed.',
+    template:'Subject: Delivered orders not settled — '+notPaid.length+' orders, '+inr(Math.round(gmv))+' — Response required by 10 July 2026'+'\n\n'+'Hi Myntra Payments Team,'+'\n\n'+'D+15 SLA BREACH — EXPLANATION REQUIRED: As per our seller tier agreement (Bronze tier), payment is committed within D+15 of delivery confirmation. These orders breached that SLA by '+minDays+' to '+maxDays+' days (avg: '+avgDays+' days). This is a contractual breach independent of eventual payment. We require written explanation within 5 business days: (a) Why was the D+15 SLA breached for these specific orders? (b) Was there a systemic issue affecting these order_line_ids? (c) What remediation prevents recurrence? Eventual payment in a future settlement cycle does not cure this breach — the D+15 commitment is measured from delivery, not from whenever payment happens to land. Payment in June does not retroactively satisfy a May obligation.'+'\n\n'+'Settlement verified: '+startStr+' to '+endStr+'\nOrders not settled (past D+15): '+notPaid.length+'\nGMV outstanding: '+inr(Math.round(gmv))+'\nDays past D+15: min='+minDays+' / avg='+avgDays+' / max='+maxDays+'\n\nDelivery breakdown:\n'+Object.entries(byMonth).sort().map(([m,c])=>m+': '+c).join('\n')+'\n\nPREEMPTING \u201CCHECK JUNE SETTLEMENT\u201D RESPONSE:\n- June 2026 Forward Settlement is expected by 7 July 2026.\n- If any of these orders were paid in June, provide the June Forward Settlement showing the specific order_line_ids with payout dates.\n- This must be provided within 5 business days. Do not close this ticket citing \u201Cthey may be in June\u201D without order-level documentary evidence.\n- If June settlement is not produced by 10 July 2026 with matching order_line_ids, these orders remain outstanding and we will escalate to Seller Support Head.\n\nADDITIONAL PREEMPTIONS:\n4. RETURNED AFTER DELIVERY: Cross-checked against April and May Returns and RTO Report. None of these order_line_ids appear in returns data. If any was returned post-delivery, provide returns documentation with order_line_id and return date.\n5. CANCELLED POST-DELIVERY: Status in Myntra own Sale Order Report is Delivered. If subsequently cancelled in Myntra system, provide updated order record with timestamp.\n\nPREEMPTING NON-ORDER DEDUCTION DEFENSE: Myntra\u2019s own Non-Order Settlement report contains no order_line_id field — every entry is an account-level reference code with no linkage to any specific order. Therefore Myntra cannot cite a non-order/marketing deduction as justification for non-payment of any specific order_line_id in this ticket. If Myntra claims any of these orders were offset against a non-order charge, they must produce documentary proof connecting that exact order_line_id to that exact deduction — a linkage their own report format does not contain. Absent such proof, these orders remain unpaid and unexplained.\n\nREPORT-SWITCHING DEFENSE: If Myntra responds by citing any other report (Settled_Report (Revamped), Unsettled_Report (Revamped), B2C_Report, PG Forward/Reverse Settled, PG Forward/Reverse Unsettled, Commission Invoice, Logistics Invoice, Royalty Data, or any other report not already part of this evidence) as showing a different status for these orders, that report must include the matching order_line_id alongside the claimed status. An aggregate invoice total, a report in a different format, or a status claim without order_line_id-level matching does not constitute valid rebuttal evidence. We will independently cross-verify any such report against the order_line_ids in this ticket.\n\nFirst 20 order line IDs: '+notPaid.slice(0,20).map(a=>getOrderId(a.row)).join(', ')+'\n\nEvidence attached sorted by most overdue.\n\nBrand: D\u2019Chica',
     proof:()=>mkXLSX(
-      [...notPaid].sort((a,b)=>(b.d15&&a.d15?(b.d15-a.d15):(b.d15?1:-1))).map(({row,delDate,d15})=>{
+      [...notPaid].sort((a,b)=>(b.d15-a.d15)).map(({row,delDate,d15})=>{
         const id=getOrderId(row);
-        const delStr=delDate?delDate.toLocaleDateString('en-IN'):'Unknown';
-        const d15Str=d15?d15.toLocaleDateString('en-IN'):'Unknown';
-        const daysPast=d15?Math.round((cutoff-d15)/864e5):null;
+        const delStr=delDate.toLocaleDateString('en-IN');
+        const d15Str=d15.toLocaleDateString('en-IN');
+        const daysPast=Math.round((cutoff-d15)/864e5);
         return[id,getSKU(row),getArticleType(row),delStr,d15Str,
-               daysPast!=null?String(daysPast)+' days past D+15':'',
-               getSP(row).toFixed(2),'Not in any Forward Settlement — '+String(daysPast||0)+' days overdue'];
+               String(daysPast)+' days past D+15',
+               getSP(row).toFixed(2),'Not in any Forward Settlement — '+String(daysPast)+' days overdue'];
       }),
-      ['Order ID','SKU','Article Type','Delivery Date','D+15 Date','Days Past D+15','Selling Price (₹)','Issue'],
+      ['Order ID','SKU','Article Type','Delivery Date','D+15 Date','Days Past D+15','Selling Price (\u20b9)','Issue'],
       'Proof_Delivered_Not_Paid.xlsx')
   };
 }
