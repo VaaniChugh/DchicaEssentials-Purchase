@@ -94,8 +94,8 @@ function monthKeyToLabel(mk){ return mk.replace("-"," "); }
 function getMonthOptions(){
   var opts=[]; var d=new Date();
   var months=["January","February","March","April","May","June","July","August","September","October","November","December"];
-  d.setMonth(d.getMonth()-2);
-  for(var i=0;i<8;i++){
+  d.setMonth(d.getMonth()-5);
+  for(var i=0;i<12;i++){
     opts.push(months[d.getMonth()]+"-"+d.getFullYear());
     d.setMonth(d.getMonth()+1);
   }
@@ -138,7 +138,7 @@ function loadData(){
     if(err){setState({syncing:false,error:"Could not connect to sheet: "+err.message});return;}
     var bmap={};
     (d.budgets||[]).forEach(function(b){bmap[b.category]=parseFloat(b.amount)||0;});
-    setState({syncing:false,budgets:bmap,entries:d.entries||[]});
+    setState({syncing:false,budgets:bmap,entries:d.entries||[],allBudgets:d.allBudgets||[]});
   });
 }
 
@@ -247,13 +247,13 @@ function render(){
     html+='</tbody></table>';
   }
 
-  // Monthly Summary Table - simplified, works without monthKey matching
+  // Current month summary
   html+='<div class="section-title">Monthly Summary &mdash; '+monthKeyToLabel(state.monthKey)+'</div>';
   html+='<table class="summary-table"><thead><tr><th>Category</th><th>Budget</th><th>Approved Spend</th><th>Remaining</th><th>% Used</th></tr></thead><tbody>';
   var grandBudget=0, grandSpent=0;
   CATEGORIES.forEach(function(cat){
     var bud=state.budgets[cat]||0;
-    var spent=(state.entries||[]).filter(function(e){ return e.category===cat&&e.status==="approved"; }).reduce(function(s,e){ return s+parseFloat(e.amount||0); },0);
+    var spent=(state.entries||[]).filter(function(e){ return e.category===cat&&e.status==="approved"&&(e.monthKey===state.monthKey||!e.monthKey); }).reduce(function(s,e){ return s+parseFloat(e.amount||0); },0);
     var remaining=bud-spent;
     var usedPct=bud>0?Math.min(100,Math.round(spent/bud*100)):0;
     grandBudget+=bud; grandSpent+=spent;
@@ -261,6 +261,35 @@ function render(){
   });
   html+='<tr style="background:#1a1a1a;color:#fff;font-weight:bold;"><td>TOTAL</td><td>₹'+grandBudget.toLocaleString('en-IN')+'</td><td>₹'+grandSpent.toLocaleString('en-IN')+'</td><td style="color:'+(grandBudget-grandSpent<0?'#ff6b6b':'#6bffb8')+'">₹'+(grandBudget-grandSpent).toLocaleString('en-IN')+'</td><td>'+(grandBudget>0?Math.round(grandSpent/grandBudget*100):0)+'%</td></tr>';
   html+='</tbody></table>';
+
+  // Month-by-month comparison — built from all entries loaded
+  var allEntries2=state.entries||[];
+  var mSet={};
+  allEntries2.forEach(function(e){ if(e.monthKey) mSet[e.monthKey]=true; });
+  mSet[state.monthKey]=true;
+  var CML=["January","February","March","April","May","June","July","August","September","October","November","December"];
+  var sMths=Object.keys(mSet).sort(function(a,b){
+    var pa=a.split("-"),pb=b.split("-");
+    var ya=parseInt(pa[1]||0),yb=parseInt(pb[1]||0);
+    var ma=CML.indexOf(pa[0]),mb=CML.indexOf(pb[0]);
+    return ya!==yb?ya-yb:ma-mb;
+  });
+  html+='<div class="section-title" style="margin-top:28px;">Month-by-Month Comparison (Approved Spend)</div>';
+  html+='<div style="overflow-x:auto;-webkit-overflow-scrolling:touch;"><table class="summary-table"><thead><tr><th style="white-space:nowrap;">Month</th>';
+  CATEGORIES.forEach(function(c){ html+='<th style="white-space:nowrap;font-size:11px;">'+c+'</th>'; });
+  html+='<th>Total</th></tr></thead><tbody>';
+  sMths.forEach(function(mk){
+    html+='<tr'+(mk===state.monthKey?' style="background:#fff9e6;"':'')+'><td style="white-space:nowrap;"><b>'+monthKeyToLabel(mk)+'</b>'+(mk===state.monthKey?' <span style="font-size:10px;color:#a87a1e;">current</span>':'')+'</td>';
+    var rT=0;
+    CATEGORIES.forEach(function(cat){
+      var sp=allEntries2.filter(function(e){ return e.category===cat&&e.status==="approved"&&e.monthKey===mk; }).reduce(function(s,e){ return s+parseFloat(e.amount||0); },0);
+      rT+=sp;
+      html+='<td style="font-size:12px;text-align:right;">'+(sp>0?'\u20b9'+sp.toLocaleString("en-IN"):'-')+'</td>';
+    });
+    html+='<td style="text-align:right;"><b>\u20b9'+rT.toLocaleString("en-IN")+'</b></td></tr>';
+  });
+  html+='</tbody></table></div>';
+
 
   app.innerHTML=html;
 }
