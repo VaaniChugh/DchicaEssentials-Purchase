@@ -1,0 +1,1173 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>D'Chica — Daily COGS Report</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+  :root{
+    --ink:#1f2421;
+    --paper:#f6f4ee;
+    --panel:#ffffff;
+    --line:#d9d4c7;
+    --accent:#8a3324;
+    --accent-soft:#f1e2dd;
+    --ok:#3a6b52;
+    --ok-soft:#e4efe8;
+    --warn:#a9720c;
+    --warn-soft:#f7ecd6;
+    --mono: "IBM Plex Mono","SFMono-Regular",Consolas,monospace;
+    --sans: "IBM Plex Sans","Segoe UI",sans-serif;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0; background:var(--paper); color:var(--ink);
+    font-family:var(--sans); line-height:1.45; padding:32px 20px 80px;
+  }
+  h1{
+    font-family:var(--mono); font-size:20px; letter-spacing:0.02em;
+    margin:0 0 4px; text-transform:uppercase;
+  }
+  .sub{color:#6b6455; font-size:13px; margin-bottom:28px;}
+  .wrap{max-width:920px; margin:0 auto;}
+  .tabs{display:flex; gap:2px; margin-bottom:20px; border-bottom:1px solid var(--line);}
+  .tab{
+    font-family:var(--mono); font-size:13px; padding:10px 16px; cursor:pointer;
+    color:#8a8577; border-bottom:2px solid transparent; user-select:none;
+  }
+  .tab.active{color:var(--ink); border-bottom-color:var(--accent); font-weight:600;}
+  .panel{
+    background:var(--panel); border:1px solid var(--line); border-radius:3px;
+    padding:20px 22px; margin-bottom:18px;
+  }
+  .panel h2{
+    font-family:var(--mono); font-size:12px; text-transform:uppercase;
+    letter-spacing:0.06em; color:#6b6455; margin:0 0 14px;
+  }
+  .row{display:flex; gap:14px; align-items:center; flex-wrap:wrap; margin-bottom:10px;}
+  .field{display:flex; flex-direction:column; gap:4px; min-width:170px;}
+  label{font-size:11px; color:#6b6455; font-family:var(--mono);}
+  select, input[type=text]{
+    font-family:var(--sans); font-size:13px; padding:7px 8px;
+    border:1px solid var(--line); border-radius:2px; background:#fff; color:var(--ink);
+  }
+  input[type=file]{font-size:13px;}
+  .filestatus{font-size:12px; font-family:var(--mono); margin-top:4px;}
+  .ok{color:var(--ok);}
+  .pending{color:#a08d6b;}
+  button{
+    font-family:var(--mono); font-size:13px; text-transform:uppercase; letter-spacing:0.03em;
+    background:var(--ink); color:#fff; border:none; padding:10px 18px;
+    border-radius:2px; cursor:pointer;
+  }
+  button:disabled{background:#c9c4b7; cursor:not-allowed;}
+  button.secondary{background:#fff; color:var(--ink); border:1px solid var(--ink);}
+  .chiprow{display:flex; gap:6px; flex-wrap:wrap; margin-top:6px;}
+  .chip{
+    font-family:var(--mono); font-size:12px; background:var(--accent-soft); color:var(--accent);
+    padding:4px 9px; border-radius:12px; display:flex; align-items:center; gap:6px;
+  }
+  .chip button{
+    background:none; border:none; color:var(--accent); padding:0; font-size:13px;
+    line-height:1; cursor:pointer;
+  }
+  .addcoupon{display:flex; gap:8px; margin-top:8px;}
+  .addcoupon input{flex:1;}
+  .checkline{display:flex; align-items:center; gap:8px; font-size:13px; margin-top:10px;}
+  table{width:100%; border-collapse:collapse; font-size:13px; margin-top:8px;}
+  th,td{
+    text-align:left; padding:7px 10px; border-bottom:1px solid var(--line);
+    font-family:var(--mono); font-size:12.5px;
+  }
+  th{color:#6b6455; text-transform:uppercase; font-size:10.5px; letter-spacing:0.04em;}
+  .summary-grid{display:grid; grid-template-columns:repeat(3,1fr); gap:12px; margin-bottom:6px;}
+  .stat{background:var(--paper); border:1px solid var(--line); border-radius:3px; padding:12px 14px;}
+  .stat .n{font-family:var(--mono); font-size:20px; font-weight:600;}
+  .stat .l{font-size:11px; color:#6b6455; margin-top:2px;}
+  .warn-box{
+    background:var(--warn-soft); border:1px solid #e3c988; color:#6b4d0a;
+    padding:12px 14px; border-radius:3px; font-size:13px; margin-top:14px;
+  }
+  .ok-box{
+    background:var(--ok-soft); border:1px solid #a9cdb8; color:#294a37;
+    padding:10px 14px; border-radius:3px; font-size:13px; margin-top:14px;
+  }
+  .actions{display:flex; gap:10px; margin-top:16px;}
+  .hint{font-size:12px; color:#8a8577; margin-top:-6px; margin-bottom:12px;}
+  .hidden{display:none !important;}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>D'Chica — Daily COGS Report</h1>
+  <div class="sub">Upload the costing sheet + a platform order/sales report. Nothing leaves your browser — all parsing happens locally.</div>
+
+  <div class="tabs" id="tabs">
+    <div class="tab active" data-platform="shopify">Shopify</div>
+    <div class="tab" data-platform="amazon">Amazon</div>
+    <div class="tab" data-platform="meesho">Meesho</div>
+    <div class="tab" data-platform="myntra">Myntra</div>
+    <div class="tab" data-platform="dealpricing">Deal Pricing</div>
+  </div>
+
+  <!-- COSTING SHEET -->
+  <div class="panel">
+    <h2>1. Costing sheet</h2>
+    <div class="row">
+      <input type="file" id="costingFile" accept=".csv,.xlsx,.xls,text/csv,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet">
+      <span class="filestatus pending" id="costingStatus">No file uploaded</span>
+    </div>
+    <div class="row hidden" id="costingHeaderRowWrap">
+      <div class="field" style="min-width:120px;">
+        <label>Header row #</label>
+        <input type="text" id="costingHeaderRow" value="1" style="width:60px;">
+      </div>
+      <div class="hint" style="margin:0;">If there's a title/banner row above the real column headers, set this to that row number.</div>
+    </div>
+    <div id="costingHeaderWarn"></div>
+    <div id="costingMapRow" class="row hidden">
+      <div class="field">
+        <label>SKU column</label>
+        <select id="costSkuCol"></select>
+      </div>
+      <div class="field">
+        <label>Primary cost column</label>
+        <select id="costNewCol"></select>
+      </div>
+      <div class="field">
+        <label>Fallback cost column (optional)</label>
+        <select id="costFallbackCol"></select>
+      </div>
+    </div>
+    <div class="hint">Primary cost is used first; fallback fills in when primary is blank or non-numeric. Last matching SKU row wins on duplicates.</div>
+  </div>
+
+  <!-- PLATFORM REPORT -->
+  <div class="panel" id="reportPanel">
+    <h2>2. <span id="platformLabel">Shopify</span> order/sales report</h2>
+    <div class="row">
+      <input type="file" id="reportFile" multiple accept=".csv,.xlsx,.xls,text/csv,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet">
+      <span class="filestatus pending" id="reportStatus">No file uploaded</span>
+      <button class="secondary hidden" id="clearReportFilesBtn" type="button" style="padding:4px 10px; font-size:11px;">Clear files</button>
+    </div>
+    <div class="hint" style="margin-top:-6px;">Select multiple files at once, or add them one at a time — each new selection is added to the list, not replaced. Make sure their date ranges don't overlap, or orders will be double-counted.</div>
+    <div class="row hidden" id="reportHeaderRowWrap">
+      <div class="field" style="min-width:120px;">
+        <label>Header row #</label>
+        <input type="text" id="reportHeaderRow" value="1" style="width:60px;">
+      </div>
+      <div class="hint" style="margin:0;">If there's a title/banner row above the real column headers, set this to that row number.</div>
+    </div>
+    <div id="reportHeaderWarn"></div>
+    <div id="reportMapGrid" class="hidden">
+      <div class="row">
+        <div class="field">
+          <label>Order ID column</label>
+          <select id="mapOrderId"></select>
+        </div>
+        <div class="field">
+          <label>SKU column</label>
+          <select id="mapSku"></select>
+        </div>
+        <div class="field">
+          <label>Quantity/units column</label>
+          <select id="mapQty"></select>
+        </div>
+        <div class="field">
+          <label>Price/sales column</label>
+          <select id="mapPrice"></select>
+        </div>
+      </div>
+      <div class="checkline">
+        <input type="checkbox" id="priceIsTotal">
+        <label for="priceIsTotal" style="font-size:13px; font-family:var(--sans); color:var(--ink);">
+          The price/sales column above is already a row total (don't multiply by quantity) — e.g. Amazon's "Ordered Product Sales"
+        </label>
+      </div>
+      <div class="checkline">
+        <input type="checkbox" id="noQtyColumn">
+        <label for="noQtyColumn" style="font-size:13px; font-family:var(--sans); color:var(--ink);">
+          This report has no quantity column — each row is 1 unit (e.g. Myntra's line-level order report)
+        </label>
+      </div>
+      <div class="row" style="margin-top:6px;">
+        <div class="field">
+          <label>Order status column (optional filter)</label>
+          <select id="mapStatus"></select>
+        </div>
+      </div>
+      <div id="statusChecklistWrap"></div>
+      <div class="row" style="margin-top:6px;">
+        <div class="field">
+          <label>Shipped-on date column (optional)</label>
+          <select id="mapShippedDate"></select>
+        </div>
+        <div class="field">
+          <label>Return date column (optional)</label>
+          <select id="mapReturnDate"></select>
+        </div>
+        <div class="field">
+          <label>RTO date column (optional)</label>
+          <select id="mapRtoDate"></select>
+        </div>
+      </div>
+      <div class="checkline">
+        <input type="checkbox" id="movedOutFilter">
+        <label for="movedOutFilter" style="font-size:13px; font-family:var(--sans); color:var(--ink);">
+          Only count rows that shipped and have no confirmed return/RTO date (goods "moved out," net of returns)
+        </label>
+      </div>
+      <div class="row" id="shopifyOnlyMapRow">
+        <div class="field">
+          <label>Payment mode column</label>
+          <select id="mapPayment"></select>
+        </div>
+        <div class="field">
+          <label>Coupon/discount code column</label>
+          <select id="mapCoupon"></select>
+        </div>
+        <div class="field">
+          <label>Order date column</label>
+          <select id="mapOrderDate"></select>
+        </div>
+        <div class="field">
+          <label>Order Total column (revenue basis)</label>
+          <select id="mapOrderTotal"></select>
+        </div>
+        <div class="field">
+          <label>Shipping Method column (COD fallback, optional)</label>
+          <select id="mapShippingMethod"></select>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- FREEBIE RULES — SHOPIFY ONLY -->
+  <div class="panel" id="freebiePanel">
+    <h2>3. Coupon freebie rules (Shopify only)</h2>
+    <div class="hint" style="margin-top:0;">Upload the coupon code sheet (coupon → designated freebie SKU). A freebie line only counts toward COGS if its SKU matches the specific SKU designated for the coupon used on that order — everything else is treated as excluded (manually removed from cart), matching your coupon T&Cs.</div>
+    <div class="row">
+      <input type="file" id="couponFile" accept=".csv,.xlsx,.xls,text/csv,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet">
+      <span class="filestatus pending" id="couponStatus">No file uploaded</span>
+    </div>
+    <div class="row hidden" id="couponHeaderRowWrap">
+      <div class="field" style="min-width:120px;">
+        <label>Header row #</label>
+        <input type="text" id="couponHeaderRow" value="1" style="width:60px;">
+      </div>
+      <div class="hint" style="margin:0;">If there's a title/banner row above the real column headers, set this to that row number.</div>
+    </div>
+    <div id="couponHeaderWarn"></div>
+    <div class="row hidden" id="couponMapRow">
+      <div class="field">
+        <label>Coupon code column</label>
+        <select id="couponCodeCol"></select>
+      </div>
+      <div class="field">
+        <label>Designated freebie SKU column</label>
+        <select id="couponSkuCol"></select>
+      </div>
+      <div class="field">
+        <label>"Other freebies included?" column</label>
+        <select id="couponStatusCol"></select>
+      </div>
+    </div>
+    <div class="row" style="margin-top:6px;">
+      <div class="field">
+        <label>Freebie SKU prefix (fallback detection, optional)</label>
+        <input type="text" id="freebiePrefix" value="DCFR" style="width:120px">
+      </div>
+    </div>
+    <div class="hint" style="margin:0 0 10px;">A line is treated as a freebie candidate if its SKU matches this prefix <em>or</em> matches any designated freebie SKU in the sheet above.</div>
+    <div class="checkline">
+      <input type="checkbox" id="codExcludes" checked>
+      <label for="codExcludes" style="font-size:13px; font-family:var(--sans); color:var(--ink);">
+        Exclude freebie COGS on all COD orders, regardless of coupon (applies retroactively — overrides even a legitimate coupon match)
+      </label>
+    </div>
+    <div class="row" style="margin-top:4px;">
+      <div class="field" style="min-width:220px;">
+        <label>ERROR500 no-freebie cutoff date</label>
+        <input type="text" id="error500Cutoff" value="2026-06-29" style="width:130px">
+      </div>
+      <div class="hint" style="margin:0;">ERROR500 excludes freebie cost only for orders on/after this date (YYYY-MM-DD). Before this date, a legitimate freebie's cost is kept.</div>
+    </div>
+  </div>
+
+  <div class="row">
+    <button id="runBtn" disabled>Run report</button>
+  </div>
+
+  <!-- RESULTS -->
+  <div class="panel hidden" id="resultsPanel">
+    <h2>Results</h2>
+    <div class="summary-grid" id="summaryGrid"></div>
+    <div id="mappingUsed" class="hint" style="margin-top:10px;"></div>
+    <div id="warnBox"></div>
+    <div id="anomalyTableWrap"></div>
+    <div id="noRuleTableWrap"></div>
+    <div class="actions">
+      <button class="secondary" id="downloadDetailBtn">Download line-level detail (CSV)</button>
+      <button class="secondary" id="downloadUnmatchedBtn">Download unmatched SKUs (CSV)</button>
+    </div>
+    <div id="unmatchedTableWrap"></div>
+  </div>
+
+  <!-- DEAL PRICING -->
+  <div class="panel hidden" id="dealPanel">
+    <h2>2. Deal price list</h2>
+    <div class="hint" style="margin-top:0;">Upload proposed deal prices per SKU (per channel, if you have several). Checked against the costing sheet above — margin here is <strong>product cost vs. selling price only</strong>, it does not include platform commission, shipping, payment fees, or return/RTO risk.</div>
+    <div class="row">
+      <input type="file" id="dealFile" accept=".csv,.xlsx,.xls,text/csv,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet">
+      <span class="filestatus pending" id="dealStatus">No file uploaded</span>
+    </div>
+    <div class="row hidden" id="dealSheetWrap">
+      <div class="field">
+        <label>Sheet</label>
+        <select id="dealSheetSelect"></select>
+      </div>
+      <div class="hint" style="margin:0;">This file has multiple sheets — pick the right one. The tool can't guess this safely.</div>
+    </div>
+    <div class="row hidden" id="dealHeaderRowWrap">
+      <div class="field" style="min-width:120px;">
+        <label>Header row #</label>
+        <input type="text" id="dealHeaderRow" value="1" style="width:60px;">
+      </div>
+      <div class="hint" style="margin:0;">If there's a title/banner row above the real column headers, set this to that row number.</div>
+    </div>
+    <div id="dealHeaderWarn"></div>
+    <div id="dealMapRow" class="row hidden">
+      <div class="field">
+        <label>SKU column</label>
+        <select id="dealSkuCol"></select>
+      </div>
+      <div class="field">
+        <label>Proposed price column</label>
+        <select id="dealPriceCol"></select>
+      </div>
+      <div class="field">
+        <label>Channel column (optional)</label>
+        <select id="dealChannelCol"></select>
+      </div>
+    </div>
+    <div class="row" style="margin-top:6px;">
+      <div class="field">
+        <label>Maximum COGS %</label>
+        <input type="text" id="maxCogsPct" value="26" style="width:70px">
+      </div>
+    </div>
+  </div>
+
+  <div class="row hidden" id="dealRunRow">
+    <button id="dealRunBtn" disabled>Check deal prices</button>
+  </div>
+
+  <div class="panel hidden" id="dealResultsPanel">
+    <h2>Deal Pricing Results</h2>
+    <div class="summary-grid" id="dealSummaryGrid"></div>
+    <div id="dealWarnBox"></div>
+    <div class="actions">
+      <button class="secondary" id="downloadDealBtn">Download full sheet (approve/alternative price)</button>
+    </div>
+    <div id="dealTableWrap"></div>
+  </div>
+</div>
+
+<script>
+const state = {
+  platform: 'shopify',
+  costingRows: null, costingHeaders: [],
+  reportFiles: [], reportRows: null, reportHeaders: [],
+  couponAOA: null, couponRows: null, couponHeaders: [],
+  selectedStatuses: new Set(),
+  dealAOA: null, dealRows: null, dealHeaders: [], dealSheets: null,
+};
+
+// ---------- helpers ----------
+function guessCol(headers, keywords, avoid=[]) {
+  const lower = headers.map(h => h.toLowerCase());
+  for (const kw of keywords) {
+    const idx = lower.findIndex(h => h.includes(kw) && !avoid.some(a => h.includes(a)));
+    if (idx !== -1) return headers[idx];
+  }
+  return '';
+}
+function fillSelect(sel, headers, guessed) {
+  sel.innerHTML = '<option value="">— none —</option>' +
+    headers.map(h => `<option value="${h}">${h}</option>`).join('');
+  if (guessed) sel.value = guessed;
+}
+function normalizeSku(raw) {
+  if (!raw) return '';
+  let s = String(raw).trim().toUpperCase();
+  const match = s.match(/^([^\/\-_]+)/);
+  if (match) s = match[1];
+  return s.trim();
+}
+function toNum(v) {
+  if (v === null || v === undefined) return NaN;
+  const n = parseFloat(String(v).replace(/[^0-9.\-]/g,''));
+  return isNaN(n) ? NaN : n;
+}
+function parseRawFileAllSheets(file, cb) {
+  const name = file.name.toLowerCase();
+  const isExcel = name.endsWith('.xlsx') || name.endsWith('.xls');
+  if (!isExcel) {
+    Papa.parse(file, {
+      skipEmptyLines: true,
+      complete: (res) => cb({sheetNames: ['(CSV)'], sheets: {'(CSV)': res.data}}),
+      error: (err) => alert('Could not read this file as CSV: ' + err.message)
+    });
+    return;
+  }
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    try {
+      const wb = XLSX.read(new Uint8Array(e.target.result), {type:'array'});
+      const sheets = {};
+      wb.SheetNames.forEach(n => {
+        sheets[n] = XLSX.utils.sheet_to_json(wb.Sheets[n], {header:1, defval:'', raw:false});
+      });
+      cb({sheetNames: wb.SheetNames, sheets});
+    } catch (err) {
+      alert('Could not read this Excel file: ' + err.message);
+    }
+  };
+  reader.onerror = () => alert('Could not read this file.');
+  reader.readAsArrayBuffer(file);
+}
+
+function parseRawFile(file, cb) {
+  const name = file.name.toLowerCase();
+  const isExcel = name.endsWith('.xlsx') || name.endsWith('.xls');
+
+  if (!isExcel) {
+    Papa.parse(file, {
+      skipEmptyLines: true,
+      complete: (res) => cb(res.data),
+      error: (err) => alert('Could not read this file as CSV: ' + err.message)
+    });
+    return;
+  }
+
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    try {
+      const wb = XLSX.read(new Uint8Array(e.target.result), {type:'array'});
+      const sheet = wb.Sheets[wb.SheetNames[0]];
+      const aoa = XLSX.utils.sheet_to_json(sheet, {header:1, defval:'', raw:false});
+      cb(aoa);
+    } catch (err) {
+      alert('Could not read this Excel file: ' + err.message);
+    }
+  };
+  reader.onerror = () => alert('Could not read this file.');
+  reader.readAsArrayBuffer(file);
+}
+
+function rowsFromAOA(aoa, headerRowNum) {
+  const idx = Math.max(1, parseInt(headerRowNum, 10) || 1) - 1;
+  const headers = (aoa[idx] || []).map(h => String(h == null ? '' : h).trim());
+  const dataRows = aoa.slice(idx + 1).filter(r => r.some(c => String(c == null ? '' : c).trim() !== ''));
+  const rows = dataRows.map(r => {
+    const obj = {};
+    headers.forEach((h, i) => { if (h) obj[h] = r[i] !== undefined ? r[i] : ''; });
+    return obj;
+  });
+  return {headers: headers.filter(Boolean), rows};
+}
+function downloadCSV(filename, rows) {
+  const csv = Papa.unparse(rows);
+  const blob = new Blob([csv], {type:'text/csv'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = filename; a.click();
+  URL.revokeObjectURL(url);
+}
+
+// ---------- tabs ----------
+document.querySelectorAll('.tab').forEach(tab => {
+  tab.addEventListener('click', () => {
+    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+    tab.classList.add('active');
+    state.platform = tab.dataset.platform;
+    const isDeal = state.platform === 'dealpricing';
+    if (state.platform !== 'myntra') {
+      const movedOutCb = document.getElementById('movedOutFilter');
+      if (movedOutCb) movedOutCb.checked = false;
+    }
+    const isShopify = state.platform === 'shopify';
+
+    document.getElementById('reportPanel').classList.toggle('hidden', isDeal);
+    document.getElementById('freebiePanel').classList.toggle('hidden', isDeal || !isShopify);
+    document.getElementById('runBtn').parentElement.classList.toggle('hidden', isDeal);
+    document.getElementById('resultsPanel').classList.toggle('hidden', isDeal || document.getElementById('resultsPanel').dataset.hasRun !== '1');
+    document.getElementById('dealPanel').classList.toggle('hidden', !isDeal);
+    document.getElementById('dealRunRow').classList.toggle('hidden', !isDeal);
+    document.getElementById('dealResultsPanel').classList.toggle('hidden', !isDeal || document.getElementById('dealResultsPanel').dataset.hasRun !== '1');
+
+    if (!isDeal) {
+      document.getElementById('platformLabel').textContent = tab.textContent.trim();
+      document.getElementById('shopifyOnlyMapRow').classList.toggle('hidden', !isShopify);
+    }
+    checkReady();
+    checkDealReady();
+  });
+});
+
+// ---------- costing sheet ----------
+function rebuildCosting() {
+  if (!state.costingAOA) return;
+  const {headers, rows} = rowsFromAOA(state.costingAOA, document.getElementById('costingHeaderRow').value);
+  state.costingRows = rows; state.costingHeaders = headers;
+  document.getElementById('costingMapRow').classList.remove('hidden');
+  fillSelect(document.getElementById('costSkuCol'), headers, guessCol(headers, ['sku']));
+  fillSelect(document.getElementById('costNewCol'), headers, guessCol(headers, ['new cost','viscose','base cost','cost']));
+  fillSelect(document.getElementById('costFallbackCol'), headers, guessCol(headers, ['current cost'], ['new','base']));
+  const warnEl = document.getElementById('costingHeaderWarn');
+  if (headers.length <= 1) {
+    warnEl.innerHTML = `<div class="warn-box">Only ${headers.length} usable column detected at header row ${document.getElementById('costingHeaderRow').value}. This almost always means the real headers are on a different row (there's likely a title/banner row above them) — increase the header row number.</div>`;
+  } else {
+    warnEl.innerHTML = '';
+  }
+  checkReady();
+  checkDealReady();
+}
+document.getElementById('costingFile').addEventListener('change', (e) => {
+  const file = e.target.files[0];
+  if (!file) return;
+  parseRawFile(file, (aoa) => {
+    state.costingAOA = aoa;
+    document.getElementById('costingStatus').textContent = `${file.name} — ${aoa.length} rows read`;
+    document.getElementById('costingStatus').className = 'filestatus ok';
+    document.getElementById('costingHeaderRowWrap').classList.remove('hidden');
+    rebuildCosting();
+  });
+});
+document.getElementById('costingHeaderRow').addEventListener('input', rebuildCosting);
+
+// ---------- platform report ----------
+function rebuildReport() {
+  if (!state.reportFiles || state.reportFiles.length === 0) return;
+  const headerRowNum = document.getElementById('reportHeaderRow').value;
+  let headers = null;
+  let rows = [];
+  const mismatchedFiles = [];
+  state.reportFiles.forEach(f => {
+    const parsed = rowsFromAOA(f.aoa, headerRowNum);
+    if (!headers) {
+      headers = parsed.headers;
+    } else if (JSON.stringify(parsed.headers) !== JSON.stringify(headers)) {
+      mismatchedFiles.push(f.name);
+    }
+    rows = rows.concat(parsed.rows);
+  });
+  state.reportRows = rows; state.reportHeaders = headers || [];
+  document.getElementById('reportMapGrid').classList.remove('hidden');
+  fillSelect(document.getElementById('mapOrderId'), headers,
+    guessCol(headers, ['order id','order name','order number','order #','name']));
+  fillSelect(document.getElementById('mapSku'), headers, guessCol(headers, ['sku']));
+  fillSelect(document.getElementById('mapQty'), headers, guessCol(headers, ['qty','quantity','units ordered','units']));
+  fillSelect(document.getElementById('mapPrice'), headers,
+    guessCol(headers, ['lineitem price','unit price','price','ordered product sales','sales','amount'], ['total order']));
+  fillSelect(document.getElementById('mapPayment'), headers, guessCol(headers, ['payment']));
+  fillSelect(document.getElementById('mapCoupon'), headers, guessCol(headers, ['discount code','coupon']));
+  fillSelect(document.getElementById('mapOrderDate'), headers, guessCol(headers, ['created at','order date','date']));
+  fillSelect(document.getElementById('mapOrderTotal'), headers, guessCol(headers, ['total'], ['subtotal','taxes','discount']));
+  fillSelect(document.getElementById('mapShippingMethod'), headers, guessCol(headers, ['shipping method']));
+  fillSelect(document.getElementById('mapStatus'), headers, guessCol(headers, ['order status','status']));
+  fillSelect(document.getElementById('mapShippedDate'), headers, guessCol(headers, ['shipped on','shipped']));
+  fillSelect(document.getElementById('mapReturnDate'), headers, guessCol(headers, ['return creation date','return date']));
+  fillSelect(document.getElementById('mapRtoDate'), headers, guessCol(headers, ['rto creation date','rto date']));
+  rebuildStatusChecklist();
+  const warnEl = document.getElementById('reportHeaderWarn');
+  let warnHtml = '';
+  if (!headers || headers.length <= 1) {
+    warnHtml += `<div class="warn-box">Only ${headers ? headers.length : 0} usable column detected at header row ${headerRowNum}. Increase the header row number — the real headers are likely on a different row.</div>`;
+  }
+  if (mismatchedFiles.length > 0) {
+    warnHtml += `<div class="warn-box">These uploaded files have different columns than the first file, at header row ${headerRowNum}: ${mismatchedFiles.join(', ')}. Their data was still included, but column mapping below is based on the first file only — double check nothing is misaligned.</div>`;
+  }
+  warnEl.innerHTML = warnHtml;
+  checkReady();
+}
+function checkReportDuplicates() {
+  if (!state.reportFiles || state.reportFiles.length < 2 || !state.reportRows) return;
+  const oIdCol = document.getElementById('mapOrderId').value;
+  const oSkuCol = document.getElementById('mapSku').value;
+  const oQtyCol = document.getElementById('mapQty').value;
+  if (!oIdCol || !oSkuCol) return;
+  const seen = new Set();
+  let dupeCount = 0;
+  state.reportRows.forEach(r => {
+    const key = [r[oIdCol], r[oSkuCol], oQtyCol ? r[oQtyCol] : ''].join('|');
+    if (seen.has(key)) dupeCount++;
+    else seen.add(key);
+  });
+  const el = document.getElementById('reportHeaderWarn');
+  if (dupeCount > 0) {
+    el.innerHTML += `<div class="warn-box">${dupeCount} order-line(s) appear identically more than once across your uploaded files — likely overlapping date ranges between files, which would double-count revenue and COGS. Check your file date ranges don't overlap before trusting the results.</div>`;
+  }
+}
+document.getElementById('reportFile').addEventListener('change', (e) => {
+  const files = Array.from(e.target.files || []);
+  if (files.length === 0) return;
+  if (!state.reportFiles) state.reportFiles = [];
+  let pending = files.length;
+  files.forEach(file => {
+    parseRawFile(file, (aoa) => {
+      state.reportFiles.push({name: file.name, aoa});
+      pending--;
+      if (pending === 0) {
+        document.getElementById('reportStatus').textContent =
+          state.reportFiles.map(f => `${f.name} (${f.aoa.length} rows)`).join(' + ');
+        document.getElementById('reportStatus').className = 'filestatus ok';
+        document.getElementById('reportHeaderRowWrap').classList.remove('hidden');
+        document.getElementById('clearReportFilesBtn').classList.remove('hidden');
+        rebuildReport();
+        checkReportDuplicates();
+      }
+    });
+  });
+  e.target.value = ''; // allow re-selecting the same filename later without it being ignored
+});
+document.getElementById('clearReportFilesBtn').addEventListener('click', () => {
+  state.reportFiles = [];
+  state.reportRows = null; state.reportHeaders = [];
+  document.getElementById('reportStatus').textContent = 'No file uploaded';
+  document.getElementById('reportStatus').className = 'filestatus pending';
+  document.getElementById('reportHeaderRowWrap').classList.add('hidden');
+  document.getElementById('reportMapGrid').classList.add('hidden');
+  document.getElementById('reportHeaderWarn').innerHTML = '';
+  document.getElementById('clearReportFilesBtn').classList.add('hidden');
+  checkReady();
+});
+document.getElementById('reportHeaderRow').addEventListener('input', () => { rebuildReport(); checkReportDuplicates(); });
+function rebuildStatusChecklist() {
+  const col = document.getElementById('mapStatus').value;
+  const wrap = document.getElementById('statusChecklistWrap');
+  if (!col || !state.reportRows) {
+    wrap.innerHTML = '';
+    state.selectedStatuses = new Set();
+    checkReady();
+    return;
+  }
+  const counts = {};
+  state.reportRows.forEach(r => {
+    const v = String(r[col] ?? '').trim() || '(blank)';
+    counts[v] = (counts[v] || 0) + 1;
+  });
+  const values = Object.keys(counts).sort((a,b) => counts[b]-counts[a]);
+  const isMeesho = state.platform === 'meesho';
+  const autoIncluded = new Set(['SHIPPED','DELIVERED']);
+  state.selectedStatuses = new Set(
+    isMeesho ? values.filter(v => autoIncluded.has(v.toUpperCase())) : []
+  );
+  const introText = isMeesho
+    ? `Auto-selected "SHIPPED" and "DELIVERED" as completed sales (goods moved out). Everything else — READY_TO_SHIP, CANCELLED, HOLD, RTO_LOCKED, etc. — defaults to excluded. Adjust below if this run needs something different.`
+    : `Pick which status(es) represent a completed sale that should count toward COGS. Nothing is included until you choose — guessing wrong here can swing the number several-fold.`;
+  wrap.innerHTML = `<div class="${isMeesho ? 'ok-box' : 'warn-box'}">${introText}</div>` +
+    `<div class="chiprow" id="statusChips" style="flex-direction:column; align-items:flex-start; gap:6px;">` +
+    values.map(v => `<label style="display:flex; align-items:center; gap:8px; font-family:var(--mono); font-size:13px;"><input type="checkbox" class="statusCheck" value="${v}" ${state.selectedStatuses.has(v)?'checked':''}> ${v} <span style="color:#8a8577;">(${counts[v]} rows)</span></label>`).join('') +
+    `</div>`;
+  wrap.querySelectorAll('.statusCheck').forEach(cb => {
+    cb.addEventListener('change', () => {
+      if (cb.checked) state.selectedStatuses.add(cb.value);
+      else state.selectedStatuses.delete(cb.value);
+      checkReady();
+    });
+  });
+  checkReady();
+}
+document.getElementById('mapStatus').addEventListener('change', rebuildStatusChecklist);
+
+// ---------- coupon chips ----------
+function rebuildCoupon() {
+  if (!state.couponAOA) return;
+  const {headers, rows} = rowsFromAOA(state.couponAOA, document.getElementById('couponHeaderRow').value);
+  state.couponRows = rows; state.couponHeaders = headers;
+  document.getElementById('couponMapRow').classList.remove('hidden');
+  fillSelect(document.getElementById('couponCodeCol'), headers, guessCol(headers, ['coupon code','coupon']));
+  fillSelect(document.getElementById('couponSkuCol'), headers, guessCol(headers, ['freebie included sku','freebie sku','freebie']));
+  fillSelect(document.getElementById('couponStatusCol'), headers, guessCol(headers, ['in cart freebies','other freebies','freebies included']));
+  const warnEl = document.getElementById('couponHeaderWarn');
+  if (headers.length <= 1) {
+    warnEl.innerHTML = `<div class="warn-box">Only ${headers.length} usable column detected at header row ${document.getElementById('couponHeaderRow').value}. Increase the header row number.</div>`;
+  } else {
+    warnEl.innerHTML = '';
+  }
+  checkReady();
+}
+document.getElementById('couponFile').addEventListener('change', (e) => {
+  const file = e.target.files[0];
+  if (!file) return;
+  parseRawFile(file, (aoa) => {
+    state.couponAOA = aoa;
+    document.getElementById('couponStatus').textContent = `${file.name} — ${aoa.length} rows read`;
+    document.getElementById('couponStatus').className = 'filestatus ok';
+    document.getElementById('couponHeaderRowWrap').classList.remove('hidden');
+    rebuildCoupon();
+  });
+});
+document.getElementById('couponHeaderRow').addEventListener('input', rebuildCoupon);
+
+// ---------- ready check ----------
+function checkReady() {
+  const costOk = state.costingHeaders && state.costingHeaders.length > 1;
+  const reportOk = state.reportHeaders && state.reportHeaders.length > 1;
+  const isShopify = state.platform === 'shopify';
+  const couponOk = !isShopify || (state.couponHeaders && state.couponHeaders.length > 1);
+  const statusCol = document.getElementById('mapStatus') ? document.getElementById('mapStatus').value : '';
+  const statusOk = !statusCol || (state.selectedStatuses && state.selectedStatuses.size > 0);
+  document.getElementById('runBtn').disabled = !(state.costingRows && state.reportRows && costOk && reportOk && couponOk && statusOk);
+}
+
+// ---------- run report ----------
+document.getElementById('runBtn').addEventListener('click', () => {
+  const isShopify = state.platform === 'shopify';
+
+  // build cost map
+  const skuCol = document.getElementById('costSkuCol').value;
+  const newCol = document.getElementById('costNewCol').value;
+  const fallbackCol = document.getElementById('costFallbackCol').value;
+  const costMap = {};
+  state.costingRows.forEach(r => {
+    const sku = normalizeSku(r[skuCol]);
+    if (!sku) return;
+    let cost = toNum(r[newCol]);
+    if (isNaN(cost) && fallbackCol) cost = toNum(r[fallbackCol]);
+    if (!isNaN(cost)) costMap[sku] = cost; // last row wins
+  });
+
+  // mapping for report
+  const oIdCol = document.getElementById('mapOrderId').value;
+  const oSkuCol = document.getElementById('mapSku').value;
+  const oQtyCol = document.getElementById('mapQty').value;
+  const oPriceCol = document.getElementById('mapPrice').value;
+  const oPayCol = document.getElementById('mapPayment').value;
+  const oCoupCol = document.getElementById('mapCoupon').value;
+  const priceIsTotal = document.getElementById('priceIsTotal').checked;
+  const noQtyColumn = document.getElementById('noQtyColumn').checked;
+  const statusCol = document.getElementById('mapStatus').value;
+  const allowedStatuses = state.selectedStatuses;
+  let statusFilteredOut = 0;
+  const movedOutFilter = document.getElementById('movedOutFilter').checked;
+  const shippedDateCol = document.getElementById('mapShippedDate').value;
+  const returnDateCol = document.getElementById('mapReturnDate').value;
+  const rtoDateCol = document.getElementById('mapRtoDate').value;
+  let movedOutFilteredOut = 0;
+
+  const anomalies = {}; // sku -> {unitCost, unitPrice, ratio, orders:Set}
+  const ANOMALY_RATIO = 3; // flag if cost > 3x price
+
+  const freebiePrefix = document.getElementById('freebiePrefix').value.trim().toUpperCase();
+  const codExcludes = document.getElementById('codExcludes').checked;
+  const error500Cutoff = document.getElementById('error500Cutoff').value.trim();
+  const oDateCol = document.getElementById('mapOrderDate').value;
+
+  // coupon -> {skus: [normalized SKUs], otherFreebiesIncluded: bool}
+  const couponRules = {};
+  const allFreebieSkus = new Set();
+  if (isShopify && state.couponRows) {
+    const cCodeCol = document.getElementById('couponCodeCol').value;
+    const cSkuCol = document.getElementById('couponSkuCol').value;
+    const cStatusCol = document.getElementById('couponStatusCol').value;
+    state.couponRows.forEach(r => {
+      const code = String(r[cCodeCol] || '').trim().toUpperCase();
+      if (!code) return;
+      const skuCell = String(r[cSkuCol] || '');
+      const skus = skuCell.split(',').map(s => normalizeSku(s)).filter(Boolean);
+      const statusRaw = (cStatusCol ? String(r[cStatusCol] || '') : '').trim().toUpperCase();
+      const otherFreebiesIncluded = statusRaw === 'YES';
+      couponRules[code] = {skus, otherFreebiesIncluded};
+      skus.forEach(s => allFreebieSkus.add(s));
+    });
+  }
+
+  const orderIds = new Set();
+  let totalUnits = 0, totalRevenue = 0, cogs = 0, freebieUnitsExcluded = 0;
+  const unmatched = {}; // sku -> {qty, orders:Set}
+  const noRuleFreebies = {}; // sku -> {qty, orders:Set}
+  const detailRows = [];
+
+  // Shopify (and similarly-structured) exports only populate order-level fields
+  // (Payment Method, Discount Code) on an order's FIRST line item row — every other
+  // line for that order is blank in the raw file. Backfill from any non-blank value
+  // seen for the same order ID before running per-line freebie/COD logic.
+  const orderMeta = {};
+  let backfilledPayment = 0, backfilledCoupon = 0;
+  const oTotalCol = document.getElementById('mapOrderTotal').value;
+  const oShipMethodCol = document.getElementById('mapShippingMethod').value;
+  if (oIdCol && (oPayCol || oCoupCol || oTotalCol || oShipMethodCol)) {
+    state.reportRows.forEach(r => {
+      const oid = r[oIdCol];
+      if (!oid) return;
+      if (!orderMeta[oid]) orderMeta[oid] = {payment:'', coupon:'', total: undefined, shipMethod:''};
+      const pay = oPayCol ? String(r[oPayCol] || '').trim() : '';
+      const coup = oCoupCol ? String(r[oCoupCol] || '').trim() : '';
+      const ship = oShipMethodCol ? String(r[oShipMethodCol] || '').trim() : '';
+      if (pay && !orderMeta[oid].payment) orderMeta[oid].payment = pay;
+      if (coup && !orderMeta[oid].coupon) orderMeta[oid].coupon = coup;
+      if (ship && !orderMeta[oid].shipMethod) orderMeta[oid].shipMethod = ship;
+      if (oTotalCol && orderMeta[oid].total === undefined) {
+        const t = toNum(r[oTotalCol]);
+        if (!isNaN(t)) orderMeta[oid].total = t;
+      }
+    });
+  }
+
+  state.reportRows.forEach(r => {
+    const orderId = r[oIdCol] || '';
+    const sku = normalizeSku(r[oSkuCol]);
+    const qty = noQtyColumn ? 1 : (toNum(r[oQtyCol]) || 0);
+    const price = toNum(r[oPriceCol]) || 0;
+    if (!sku || qty === 0) return; // skip blank/shipping/tax lines with no SKU
+    if (statusCol) {
+      const statusVal = String(r[statusCol] ?? '').trim() || '(blank)';
+      if (!allowedStatuses.has(statusVal)) { statusFilteredOut++; return; }
+    }
+    if (movedOutFilter) {
+      const shipped = shippedDateCol ? String(r[shippedDateCol] ?? '').trim() : '';
+      const returned = returnDateCol ? String(r[returnDateCol] ?? '').trim() : '';
+      const rto = rtoDateCol ? String(r[rtoDateCol] ?? '').trim() : '';
+      const hasShipped = !!shipped;
+      const hasReturnOrRto = !!returned || !!rto;
+      if (!hasShipped || hasReturnOrRto) { movedOutFilteredOut++; return; }
+    }
+
+    if (orderId) orderIds.add(orderId);
+    totalUnits += qty;
+    const lineRevenue = priceIsTotal ? price : (qty * price);
+    const perUnitPrice = priceIsTotal ? (qty ? price / qty : 0) : price;
+    const useOrderTotal = isShopify && oTotalCol && orderId;
+    if (!useOrderTotal) totalRevenue += lineRevenue; // per-line fallback when no order Total column mapped
+
+    let isFreebie = false, excluded = false, noRuleMatch = false;
+    if (isShopify) {
+      isFreebie = (freebiePrefix && sku.startsWith(freebiePrefix)) || allFreebieSkus.has(sku);
+      if (isFreebie) {
+        const couponRaw = (oCoupCol ? String(r[oCoupCol] || '').trim() : '');
+        const couponFromRow = !!couponRaw;
+        const effectiveCoupon = (couponFromRow ? couponRaw : (orderMeta[orderId]?.coupon || '')).toUpperCase();
+        if (!couponFromRow && effectiveCoupon) backfilledCoupon++;
+        const orderCoupons = effectiveCoupon.split(',').map(c=>c.trim()).filter(Boolean);
+        const matchedCoupon = orderCoupons.find(c => Object.prototype.hasOwnProperty.call(couponRules, c));
+        const paymentRaw = (oPayCol ? String(r[oPayCol] || '').trim() : '');
+        const paymentFromRow = !!paymentRaw;
+        const effectivePayment = (paymentFromRow ? paymentRaw : (orderMeta[orderId]?.payment || '')).toLowerCase();
+        if (!paymentFromRow && effectivePayment) backfilledPayment++;
+        const shipMethod = (orderMeta[orderId]?.shipMethod || '').toLowerCase();
+        const isCOD = effectivePayment.includes('cod') || shipMethod.includes('cod');
+        const orderDate = (oDateCol ? String(r[oDateCol] || '') : '');
+
+        let isLegit = false;
+        if (matchedCoupon) {
+          const rule = couponRules[matchedCoupon];
+          isLegit = rule.otherFreebiesIncluded || rule.skus.includes(sku);
+          // ERROR500 special case: only excludes freebie on/after cutoff date
+          if (matchedCoupon === 'ERROR500' && error500Cutoff && orderDate) {
+            const cutoffTs = Date.parse(error500Cutoff);
+            const orderTs = Date.parse(orderDate);
+            const bothParsed = !isNaN(cutoffTs) && !isNaN(orderTs);
+            const isOnOrAfterCutoff = bothParsed ? (orderTs >= cutoffTs) : (orderDate >= error500Cutoff);
+            if (!isOnOrAfterCutoff) isLegit = true; // pre-cutoff: don't strip a possibly-real freebie cost
+          }
+        } else {
+          // freebie SKU present but no recognized coupon on the order —
+          // per confirmed ops reality, it shipped as-is; count its cost.
+          // COD override below still applies even here.
+          isLegit = true;
+          noRuleMatch = true;
+        }
+
+        if (!isLegit || (codExcludes && isCOD)) {
+          excluded = true;
+          freebieUnitsExcluded += qty;
+        }
+        if (noRuleMatch && !excluded) {
+          if (!noRuleFreebies[sku]) noRuleFreebies[sku] = {qty:0, orders:new Set()};
+          noRuleFreebies[sku].qty += qty;
+          if (orderId) noRuleFreebies[sku].orders.add(orderId);
+        }
+      }
+    }
+
+    let lineCogs = 0, matched = true;
+    if (!excluded) {
+      const unitCost = costMap[sku];
+      if (unitCost === undefined) {
+        matched = false;
+        if (!unmatched[sku]) unmatched[sku] = {qty:0, orders:new Set()};
+        unmatched[sku].qty += qty;
+        if (orderId) unmatched[sku].orders.add(orderId);
+      } else {
+        lineCogs = unitCost * qty;
+        cogs += lineCogs;
+        if (perUnitPrice > 0 && unitCost > perUnitPrice * ANOMALY_RATIO) {
+          if (!anomalies[sku]) anomalies[sku] = {unitCost, unitPrice: perUnitPrice, orders: new Set()};
+          if (orderId) anomalies[sku].orders.add(orderId);
+        }
+      }
+    }
+
+    detailRows.push({
+      order_id: orderId, sku, qty, unit_price: perUnitPrice.toFixed(2),
+      matched_cost: matched && !excluded ? (costMap[sku] ?? '') : '',
+      line_cogs: excluded ? 0 : (matched ? lineCogs.toFixed(2) : ''),
+      excluded_freebie: excluded ? 'Y' : 'N',
+      unmatched_sku: (!excluded && !matched) ? 'Y' : 'N'
+    });
+  });
+
+  let revenueBasis = 'per-line price × quantity';
+  let ordersMissingTotal = 0;
+  if (isShopify && oTotalCol) {
+    let orderTotalSum = 0;
+    orderIds.forEach(oid => {
+      const t = orderMeta[oid]?.total;
+      if (t !== undefined) orderTotalSum += t;
+      else ordersMissingTotal++;
+    });
+    totalRevenue = orderTotalSum;
+    revenueBasis = `order-level "${oTotalCol}" (summed once per order, includes shipping & tax)`;
+  }
+
+  const cogsPct = totalRevenue ? (cogs/totalRevenue*100) : 0;
+  const marginPct = totalRevenue ? ((totalRevenue-cogs)/totalRevenue*100) : 0;
+  const unmatchedSkuCount = Object.keys(unmatched).length;
+  const unmatchedUnitTotal = Object.values(unmatched).reduce((s,u)=>s+u.qty,0);
+
+  // render summary
+  const grid = document.getElementById('summaryGrid');
+  const stats = [
+    ['Orders', oIdCol ? orderIds.size : 'N/A (no order ID in report)'],
+    ['Total units', totalUnits],
+    ['Revenue', '₹'+totalRevenue.toLocaleString('en-IN',{maximumFractionDigits:0})],
+    ['COGS (matched)', '₹'+cogs.toLocaleString('en-IN',{maximumFractionDigits:0})],
+    ['COGS %', cogsPct.toFixed(2)+'%'],
+    ['Margin % (provisional)'+(isShopify && oTotalCol ? ', incl. shipping & tax' : ''), marginPct.toFixed(2)+'%'],
+  ];
+  if (isShopify) stats.push(['Freebie units excluded', freebieUnitsExcluded]);
+  stats.push(['Unmatched SKU units', unmatchedUnitTotal]);
+  grid.innerHTML = stats.map(([l,n]) => `<div class="stat"><div class="n">${n}</div><div class="l">${l}</div></div>`).join('');
+
+  const warnBox = document.getElementById('warnBox');
+  if (unmatchedSkuCount > 0) {
+    warnBox.innerHTML = `<div class="warn-box">${unmatchedSkuCount} SKU(s) totalling ${unmatchedUnitTotal} unit(s) had no match in the costing sheet — their cost is <strong>not included</strong> in COGS above. Margin % is provisional until these are added to the costing sheet. See table below.</div>`;
+  } else {
+    warnBox.innerHTML = `<div class="ok-box">Every SKU in this report matched the costing sheet. No provisional gaps.</div>`;
+  }
+
+  document.getElementById('mappingUsed').textContent =
+    `Cost column: ${newCol || '—'}${fallbackCol ? ' (fallback: '+fallbackCol+')' : ''}  ·  Price column: ${oPriceCol || '—'}  ·  Qty column: ${noQtyColumn ? '(none — 1 unit/row)' : (oQtyCol || '—')}  ·  Revenue basis: ${revenueBasis}`;
+
+  if (state.platform === 'myntra' && noQtyColumn) {
+    document.getElementById('mappingUsed').innerHTML += `<br><span style="color:var(--warn); font-weight:600;">⚠ "No quantity column" is checked on a Myntra report. A genuine Myntra sales report normally includes a Qty column — needing this checkbox may mean the wrong report was uploaded (e.g. an order flow export instead of the sales report). Double check before trusting these numbers.</span>`;
+  }
+
+  if (statusCol) {
+    document.getElementById('mappingUsed').innerHTML += `<br>Status filter on "${statusCol}": included [${[...allowedStatuses].join(', ')}] — ${statusFilteredOut} row(s) excluded for not matching a selected status.`;
+  }
+  if (movedOutFilter) {
+    document.getElementById('mappingUsed').innerHTML += `<br>"Moved out, net of returns" filter active — ${movedOutFilteredOut} row(s) excluded (not yet shipped, or has a confirmed return/RTO date).`;
+  }
+
+  if (isShopify && (backfilledPayment > 0 || backfilledCoupon > 0)) {
+    document.getElementById('mappingUsed').innerHTML += `<br>Backfilled from order-level rows (Shopify only exports Payment/Discount on an order's first line item): ${backfilledPayment} payment value(s), ${backfilledCoupon} coupon value(s).`;
+  }
+  if (isShopify && oTotalCol && ordersMissingTotal > 0) {
+    document.getElementById('mappingUsed').innerHTML += `<br><span style="color:var(--warn); font-weight:600;">⚠ ${ordersMissingTotal} order(s) had no readable value in "${oTotalCol}" and contributed ₹0 to revenue — check the header row / column mapping if this number looks high.</span>`;
+  }
+  if (isShopify && !oTotalCol) {
+    document.getElementById('mappingUsed').innerHTML += `<br><span style="color:var(--warn); font-weight:600;">⚠ No Order Total column mapped — revenue fell back to summing per-line "${oPriceCol}" × quantity, which is pre-discount cart value, not what the customer paid. Map the Total column to fix this.</span>`;
+  }
+
+  const priceLooksAggregate = !isShopify && /sales|amount|total|revenue/i.test(oPriceCol || '');
+  if (priceLooksAggregate && !priceIsTotal) {
+    document.getElementById('mappingUsed').innerHTML += `<br><span style="color:var(--warn); font-weight:600;">⚠ "${oPriceCol}" sounds like it could already be a row total, but the "already a row total" checkbox is unticked — double check this isn't double-counting quantity.</span>`;
+  } else if (priceIsTotal && !/sales|amount|total|revenue/i.test(oPriceCol || '')) {
+    document.getElementById('mappingUsed').innerHTML += `<br><span style="color:var(--warn); font-weight:600;">⚠ "Already a row total" is checked, but "${oPriceCol}" doesn't look like a total column name — confirm this is intentional.</span>`;
+  }
+
+  const anomalyKeys = Object.keys(anomalies);
+  const atw = document.getElementById('anomalyTableWrap');
+  if (anomalyKeys.length > 0) {
+    const rows = anomalyKeys.sort((a,b) => (anomalies[b].unitCost/anomalies[b].unitPrice) - (anomalies[a].unitCost/anomalies[a].unitPrice));
+    atw.innerHTML = `<div class="warn-box">${anomalyKeys.length} matched SKU(s) have a cost more than ${ANOMALY_RATIO}x their selling price — that usually means the wrong column is mapped as cost, not a real margin. Check the mapping above before trusting COGS.</div>` +
+      `<table><thead><tr><th>SKU</th><th>Cost pulled</th><th>Unit price</th><th>Ratio</th><th>Sample order IDs</th></tr></thead><tbody>` +
+      rows.map(sku => {
+        const a = anomalies[sku];
+        return `<tr><td>${sku}</td><td>₹${a.unitCost.toFixed(2)}</td><td>₹${a.unitPrice.toFixed(2)}</td><td>${(a.unitCost/a.unitPrice).toFixed(1)}x</td><td>${[...a.orders].slice(0,3).join(', ')}</td></tr>`;
+      }).join('') + `</tbody></table>`;
+  } else {
+    atw.innerHTML = '';
+  }
+
+  // unmatched table
+  const tw = document.getElementById('unmatchedTableWrap');
+  if (unmatchedSkuCount > 0) {
+    const rows = Object.entries(unmatched).sort((a,b)=>b[1].qty-a[1].qty);
+    tw.innerHTML = `<table><thead><tr><th>SKU</th><th>Unmatched units</th><th>Sample order IDs</th></tr></thead><tbody>` +
+      rows.map(([sku,u]) => `<tr><td>${sku}</td><td>${u.qty}</td><td>${[...u.orders].slice(0,3).join(', ')}${u.orders.size>3?' …':''}</td></tr>`).join('') +
+      `</tbody></table>`;
+  } else {
+    tw.innerHTML = '';
+  }
+
+  // freebie-looking SKUs with no matching coupon rule on the order — counted as shipped (cost included),
+  // surfaced here so you can verify these weren't actually pulled by a manual-removal process this sheet doesn't know about
+  const nrKeys = Object.keys(noRuleFreebies);
+  const nrw = document.getElementById('noRuleTableWrap');
+  if (nrKeys.length > 0) {
+    const rows = nrKeys.sort((a,b) => noRuleFreebies[b].qty - noRuleFreebies[a].qty);
+    nrw.innerHTML = `<div class="warn-box">${nrKeys.length} SKU(s) totalling ${nrKeys.reduce((s,k)=>s+noRuleFreebies[k].qty,0)} unit(s) look like freebie lines but had no recognized coupon on the order. Their cost <strong>is included</strong> in COGS above (treated as shipped) — verify that's right, especially if any of these belong to a campaign not yet in your coupon sheet.</div>` +
+      `<table><thead><tr><th>SKU</th><th>Units</th><th>Sample order IDs</th></tr></thead><tbody>` +
+      rows.map(sku => `<tr><td>${sku}</td><td>${noRuleFreebies[sku].qty}</td><td>${[...noRuleFreebies[sku].orders].slice(0,3).join(', ')}</td></tr>`).join('') +
+      `</tbody></table>`;
+  } else {
+    nrw.innerHTML = '';
+  }
+
+  document.getElementById('resultsPanel').classList.remove('hidden');
+  document.getElementById('resultsPanel').dataset.hasRun = '1';
+
+  // wire downloads
+  document.getElementById('downloadDetailBtn').onclick = () => {
+    downloadCSV(`dchica_cogs_${state.platform}_detail.csv`, detailRows);
+  };
+  document.getElementById('downloadUnmatchedBtn').onclick = () => {
+    const rows = Object.entries(unmatched).map(([sku,u]) => ({
+      sku, unmatched_units: u.qty, sample_order_ids: [...u.orders].slice(0,5).join('; ')
+    }));
+    downloadCSV(`dchica_cogs_${state.platform}_unmatched_skus.csv`, rows);
+  };
+});
+
+// ---------- deal pricing ----------
+function rebuildDeal() {
+  if (!state.dealAOA) return;
+  const {headers, rows} = rowsFromAOA(state.dealAOA, document.getElementById('dealHeaderRow').value);
+  state.dealRows = rows; state.dealHeaders = headers;
+  document.getElementById('dealMapRow').classList.remove('hidden');
+  fillSelect(document.getElementById('dealSkuCol'), headers, guessCol(headers, ['sku']));
+  fillSelect(document.getElementById('dealPriceCol'), headers, guessCol(headers, ['proposed price','deal price','price']));
+  fillSelect(document.getElementById('dealChannelCol'), headers, guessCol(headers, ['channel','platform']));
+  const warnEl = document.getElementById('dealHeaderWarn');
+  warnEl.innerHTML = (headers.length <= 1)
+    ? `<div class="warn-box">Only ${headers.length} usable column detected at header row ${document.getElementById('dealHeaderRow').value}. Increase the header row number.</div>`
+    : '';
+  checkDealReady();
+}
+document.getElementById('dealFile').addEventListener('change', (e) => {
+  const file = e.target.files[0];
+  if (!file) return;
+  parseRawFileAllSheets(file, ({sheetNames, sheets}) => {
+    state.dealSheets = sheets;
+    document.getElementById('dealStatus').textContent = `${file.name} — ${sheetNames.length} sheet(s)`;
+    document.getElementById('dealStatus').className = 'filestatus ok';
+    const sel = document.getElementById('dealSheetSelect');
+    sel.innerHTML = sheetNames.map(n => `<option value="${n}">${n} (${(sheets[n]||[]).length} rows)</option>`).join('');
+    // smart default: prefer a sheet whose header row mentions "deal" or "suggested"; else the largest sheet
+    let defaultSheet = sheetNames[0];
+    let bestRows = -1;
+    sheetNames.forEach(n => {
+      const rows = sheets[n] || [];
+      const headerRow = (rows[0] || []).map(h => String(h||'').toLowerCase());
+      const looksRight = headerRow.some(h => h.includes('deal') || h.includes('suggested'));
+      if (looksRight) { defaultSheet = n; bestRows = Infinity; }
+      else if (rows.length > bestRows && bestRows !== Infinity) { bestRows = rows.length; }
+    });
+    sel.value = defaultSheet;
+    document.getElementById('dealSheetWrap').classList.toggle('hidden', sheetNames.length <= 1);
+    state.dealAOA = sheets[defaultSheet];
+    document.getElementById('dealHeaderRowWrap').classList.remove('hidden');
+    rebuildDeal();
+  });
+});
+document.getElementById('dealSheetSelect').addEventListener('change', (e) => {
+  state.dealAOA = state.dealSheets[e.target.value];
+  rebuildDeal();
+});
+document.getElementById('dealHeaderRow').addEventListener('input', rebuildDeal);
+function checkDealReady() {
+  const costOk = state.costingHeaders && state.costingHeaders.length > 1;
+  const dealOk = state.dealHeaders && state.dealHeaders.length > 1;
+  document.getElementById('dealRunBtn').disabled = !(state.costingRows && state.dealRows && costOk && dealOk);
+}
+
+document.getElementById('dealRunBtn').addEventListener('click', () => {
+  const skuCol = document.getElementById('costSkuCol').value;
+  const newCol = document.getElementById('costNewCol').value;
+  const fallbackCol = document.getElementById('costFallbackCol').value;
+  const costMap = {};
+  state.costingRows.forEach(r => {
+    const sku = normalizeSku(r[skuCol]);
+    if (!sku) return;
+    let cost = toNum(r[newCol]);
+    if (isNaN(cost) && fallbackCol) cost = toNum(r[fallbackCol]);
+    if (!isNaN(cost)) costMap[sku] = cost;
+  });
+
+  const dSkuCol = document.getElementById('dealSkuCol').value;
+  const dPriceCol = document.getElementById('dealPriceCol').value;
+  const dChannelCol = document.getElementById('dealChannelCol').value;
+  const maxCogsFrac = (parseFloat(document.getElementById('maxCogsPct').value) || 0) / 100;
+
+  let approved = 0, rejected = 0, unmatchedCount = 0;
+  const outRows = [];
+
+  state.dealRows.forEach(r => {
+    const rawSku = r[dSkuCol];
+    const sku = normalizeSku(rawSku);
+    const price = toNum(r[dPriceCol]);
+    const channel = dChannelCol ? r[dChannelCol] : '';
+    if (!sku || isNaN(price)) return;
+    const cost = costMap[sku];
+    if (cost === undefined) {
+      unmatchedCount++;
+      outRows.push({sku: rawSku, channel, proposed_price: price, cost: '', cogs_pct: '', margin_pct: '', status: 'UNMATCHED SKU — not in costing sheet', suggested_price: ''});
+      return;
+    }
+    const cogsPct = price > 0 ? cost / price : Infinity;
+    const marginPct = 1 - cogsPct;
+    const passes = cogsPct <= maxCogsFrac;
+    const suggestedPrice = cost / maxCogsFrac; // price at which cost/price == maxCogsFrac exactly
+    if (passes) approved++; else rejected++;
+    outRows.push({
+      sku: rawSku, channel, proposed_price: price, cost,
+      cogs_pct: (cogsPct*100).toFixed(2)+'%',
+      margin_pct: (marginPct*100).toFixed(2)+'%',
+      status: passes ? 'APPROVE' : 'REJECT',
+      suggested_price: suggestedPrice.toFixed(2)
+    });
+  });
+
+  const grid = document.getElementById('dealSummaryGrid');
+  const stats = [
+    ['Checked', outRows.length],
+    ['Approved', approved],
+    ['Rejected', rejected],
+    ['Unmatched SKUs', unmatchedCount],
+  ];
+  grid.innerHTML = stats.map(([l,n]) => `<div class="stat"><div class="n">${n}</div><div class="l">${l}</div></div>`).join('');
+
+  document.getElementById('dealWarnBox').innerHTML =
+    `<div class="warn-box">Cost here is product cost vs. proposed price only — it does NOT include platform commission, shipping, payment gateway fees, or return/RTO risk. "Suggested Price" sits exactly at ${(maxCogsFrac*100).toFixed(0)}% COGS, no safety buffer. COGS % and Margin % are both shown against the <em>proposed</em> price you uploaded — not against the suggested price, which is defined to always read ${(maxCogsFrac*100).toFixed(0)}% COGS by construction and wouldn't tell you anything new as a column.</div>`;
+
+  const tw = document.getElementById('dealTableWrap');
+  tw.innerHTML = `<table><thead><tr><th>SKU</th>${dChannelCol?'<th>Channel</th>':''}<th>Proposed/Deal Price</th><th>Cost</th><th>COGS %</th><th>Margin %</th><th>Status</th><th>Suggested Price (${(maxCogsFrac*100).toFixed(0)}% COGS)</th></tr></thead><tbody>` +
+    outRows.map(o => `<tr><td>${o.sku}</td>${dChannelCol?`<td>${o.channel}</td>`:''}<td>${o.proposed_price}</td><td>${o.cost}</td><td>${o.cogs_pct}</td><td>${o.margin_pct}</td><td>${o.status}</td><td>${o.suggested_price}</td></tr>`).join('') +
+    `</tbody></table>`;
+
+  document.getElementById('dealResultsPanel').classList.remove('hidden');
+  document.getElementById('dealResultsPanel').dataset.hasRun = '1';
+
+  document.getElementById('downloadDealBtn').onclick = () => {
+    downloadCSV('dchica_deal_price_check.csv', outRows);
+  };
+});
+</script>
+
+</body>
+</html>
