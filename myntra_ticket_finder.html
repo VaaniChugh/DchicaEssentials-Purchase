@@ -103,7 +103,17 @@ footer{text-align:center;margin-top:48px;padding-top:24px;border-top:1px solid v
 <div class="wrap">
 <h1>Myntra billing error detector</h1>
 <p class="lead">Upload Myntra Seller Hub reports directly — no pre-processing needed. For complete payout analysis upload Sales Reports for all relevant months, since each settlement cycle pays out carry-forward from the previous month.</p>
-<p class="step-label">Step 1 — Upload your Myntra reports</p>
+<p class="step-label">Step 1 — Select target month, then upload reports</p>
+<div id="targetMonthBox" style="background:#fff;border:1.5px solid var(--border);border-radius:var(--radius);padding:14px 16px;margin-bottom:16px;">
+  <label style="font-size:12px;font-weight:600;color:var(--text2);display:block;margin-bottom:6px;">Target month being audited</label>
+  <input type="month" id="targetMonth" style="font-size:14px;padding:6px 10px;border:1px solid var(--border2);border-radius:6px;">
+  <div style="font-size:11px;color:var(--text3);margin-top:6px;">Upload <strong>Sales for this month only</strong>. Upload <strong>Forward + Reverse + Returns for this month and the following month</strong> (payouts for this month's deliveries land in next month's settlement cycle). Need an earlier month too (e.g. March)? Upload it after your first file using "+ Upload another month" on that report card — no separate slot needed.</div>
+  <label style="display:flex;align-items:center;gap:6px;margin-top:10px;font-size:12px;color:var(--text2);">
+    <input type="checkbox" id="day7CapToggle">
+    Only flag orders/returns whose date falls on or before the 7th of the month after target (stricter — OFF by default, changes ticket counts, see warning below when enabled)
+  </label>
+  <div id="scopeWarnings" style="margin-top:10px;"></div>
+</div>
 <div class="reports-grid" id="reportGrid"></div>
 <p class="req-note"><span>*</span> Required &nbsp;·&nbsp; Forward + Reverse + Returns are minimum. Add Sales Report(s) for delivered-not-paid analysis — upload multiple months by clicking "Add another month".</p>
 <div class="progress-wrap" id="progWrap"><div class="progress-bar" id="progBar"></div></div>
@@ -180,7 +190,7 @@ const DEFS = [
     name:'SKU COGS Sheet (internal)',
     path:'Internal costing file',
     desc:'Your base cost per Seller SKU — not from Myntra',
-    kws:['base cost/unit','base cost','total cogs'],
+    kws:['base cost/unit','base cost','total cogs','cost price'],
     nokws:['total_settlement','total_actual_settlement'], minMatch:1 },
 
   { key:'nonorder', num:9, req:false, multi:true,
@@ -371,11 +381,37 @@ function parseRateCard(rows){
   if(!rows||!rows.length) return;
   if(!D.ratecard) D.ratecard={commission:[],fixedFee:[]};
 
-  // Format: column 0 = labels/values, column 1 = second value
-  // Row structure: metadata rows, then "Seller Selling Price" header, then data rows
-  // The key for column 0 is the sheet section title (e.g. "Section: Commission Fee")
+  // FORMAT A: comprehensive seller-terms export — real column headers, one row per
+  // band, Article Type + Gender + Lower Limit + Upper Limit as actual columns (not
+  // text patterns). Detect by checking the first row's keys directly.
+  const firstKeys=Object.keys(rows[0]||{});
+  const hasTabularHeaders = firstKeys.includes('Article Type') && firstKeys.includes('Lower Limit') && firstKeys.includes('Upper Limit');
+  if(hasTabularHeaders){
+    const isCommSheet = firstKeys.includes('Commission Percentage');
+    const isFeeSheet = firstKeys.includes('Fixed Fee');
+    rows.forEach(r=>{
+      const art=String(r['Article Type']||'').trim();
+      const gender=String(r['Gender']||'').trim();
+      const lo=parseFloat(r['Lower Limit'])||0;
+      const hi=parseFloat(r['Upper Limit'])||1e7;
+      if(!art) return;
+      if(isCommSheet){
+        const rate=parseFloat(r['Commission Percentage'])||0;
+        if(rate>0) D.ratecard.commission.push({art, gender, lo, hi, rate});
+      }
+      if(isFeeSheet){
+        const fee=parseFloat(r['Fixed Fee'])||0;
+        if(fee>0) D.ratecard.fixedFee.push({art, gender, lo, hi, fee});
+      }
+    });
+    return;
+  }
 
-  // Extract article type from metadata
+  // FORMAT B (legacy): single-category export — column 0 = labels/values, column 1 =
+  // second value. Metadata rows (incl. "Article Type: X" text), then a
+  // "Seller Selling Price" header row, then "₹lo - ₹hi" price-range rows.
+  // No Gender dimension in this format — downstream matching treats gender as
+  // unconstrained (b.gender is left undefined) when this path is used.
   let artType='Bra'; // default
   rows.forEach(r=>{
     const vals=Object.values(r);
@@ -384,7 +420,6 @@ function parseRateCard(rows){
     if(m) artType=m[1].trim();
   });
 
-  // Find header row and parse data
   let inData=false;
   let isComm=false, isFixed=false;
 
@@ -393,7 +428,6 @@ function parseRateCard(rows){
     const v0=String(vals[0]||'').trim();
     const v1=String(vals[1]||'').trim();
 
-    // Detect header row
     if(v0.toLowerCase().includes('seller selling price')){
       inData=true;
       isComm=v1.toLowerCase().includes('commission');
@@ -402,15 +436,13 @@ function parseRateCard(rows){
     }
 
     if(!inData) return;
-    if(!v0.includes('\u20b9')) return; // must contain ₹
+    if(!v0.includes('\u20b9')) return;
 
-    // Parse price range: "₹0 - ₹300" or "₹2,000 - ₹1,00,00,000"
     const nums=v0.match(/[\d,]+/g);
     if(!nums||nums.length<2) return;
     const lo=parseFloat(nums[0].replace(/,/g,''))||0;
     const hi=parseFloat(nums[1].replace(/,/g,''))||1e7;
 
-    // Parse value: "9%" or "₹27"
     const val=parseFloat(v1.replace(/[^\d.]/g,''))||0;
     if(val===0) return;
 
@@ -420,15 +452,18 @@ function parseRateCard(rows){
 }
 
 
-function getContractedCommRate(art, sp){
+function getContractedCommRate(art, gender, sp){
   if(!D.ratecard||!D.ratecard.commission.length) return null;
-  const matching=D.ratecard.commission.filter(b=>b.art===art&&sp>=b.lo&&(sp<b.hi||b.hi>=1e6));
+  // Match Gender when the parsed rate card actually carries a gender dimension (the
+  // full seller-terms export does; the single-category export does not, in which
+  // case b.gender is undefined and we fall back to article-type-only matching).
+  const matching=D.ratecard.commission.filter(b=>b.art===art&&(!b.gender||b.gender===gender)&&sp>=b.lo&&(sp<b.hi||b.hi>=1e6));
   return matching.length?Math.max(...matching.map(b=>b.rate)):null;
 }
 
-function getContractedFixedFee(art, sp){
+function getContractedFixedFee(art, gender, sp){
   if(!D.ratecard||!D.ratecard.fixedFee.length) return null;
-  const matching=D.ratecard.fixedFee.filter(b=>b.art===art&&sp>=b.lo&&(sp<b.hi||b.hi>=1e6));
+  const matching=D.ratecard.fixedFee.filter(b=>b.art===art&&(!b.gender||b.gender===gender)&&sp>=b.lo&&(sp<b.hi||b.hi>=1e6));
   return matching.length?Math.max(...matching.map(b=>b.fee)):null;
 }
 
@@ -499,13 +534,21 @@ function ticket_commNotReversed(){
   const fwdMap=buildFwdMap();
 
   // Rev settlement end date — used to filter out too-recent returns
-  let revCutoff=new Date();
-  const revReasonableMax=new Date(revCutoff.getFullYear(), revCutoff.getMonth()+2, 0);
+  // FIXED: cutoff must be the true max date found in the uploaded data, never "today".
+  // Using today's date as a floor let returns whose reversal simply hadn't happened yet
+  // (within the uploaded file's real coverage window) get counted as "not reversed."
+  let revCutoff=null;
+  const _today=new Date();
+  const revReasonableMax=new Date(_today.getFullYear(), _today.getMonth()+2, 0);
   (D.rev||[]).forEach(r=>{
     const k=col(r,'settlement_date_prepaid_payment','settlement_date_postpaid_payment','return_date');
     if(!k) return;
-    try{const d=parseDate(r[k]);if(!isNaN(d)&&d<=revReasonableMax&&d>revCutoff)revCutoff=d;}catch{}
+    try{
+      const d=parseDate(r[k]);
+      if(d instanceof Date && !isNaN(d.getTime()) && d<=revReasonableMax && (!revCutoff||d>revCutoff)) revCutoff=d;
+    }catch{}
   });
+  if(!revCutoff) return null; // can't compute D+15 window without a real cutoff from the data
 
   // Filter customer returns to only those whose return D+15 falls within settlement coverage
   const customerRet=ret.filter(r=>{
@@ -517,7 +560,7 @@ function ticket_commNotReversed(){
       const rd=parseDate(r[dk]);
       if(isNaN(rd)) return true;
       const d15=new Date(rd.getTime()+15*24*60*60*1000);
-      return d15<=revCutoff;
+      return d15<=revCutoff && passesDay7Cap(rd,revCutoff);
     }catch{return true;}
   });
 
@@ -547,28 +590,28 @@ function ticket_commNotReversed(){
       commRevTotal+=revComm;
       reversedCount++;
     } else {
-      affected.push({id,date:getReturnDate(r)});
+      affected.push({id, mid:getMyntraTicketId(r), date:getReturnDate(r), row:r});
     }
   });
 
   if(!affected.length) return null;
 
-  // Average commission from orders that WERE reversed — use as claim estimate for missing ones
-  const avgComm=reversedCount>0?(commRevTotal/reversedCount):123; // ₹123 fallback from May data
-  const claimAmt=Math.round(affected.reduce((s,a)=>{
-    const fr=fwdMap[a.id];
-    return s+(fr?getCommission(fr):avgComm);
-  },0));
+  // Average commission from orders that WERE reversed — last-resort fallback only,
+  // used when an order's article type can't be determined at all.
+  const avgComm=reversedCount>0?(commRevTotal/reversedCount):123;
+  const salesMap=buildSalesMap();
+  affected.forEach(a=>{ a.estComm = estimateCommission(a.row, fwdMap, salesMap, avgComm); });
+  const claimAmt=Math.round(affected.reduce((s,a)=>s+a.estComm,0));
   if(claimAmt<1) return null;
 
   return{
     id:'comm_rev',priority:'HIGH',
     title:'Commission not reversed on '+affected.length+' return orders',
-    amount:claimAmt,count:affected.length,orders:affected.map(a=>a.id),
+    amount:claimAmt,count:affected.length,orders:affected.map(a=>a.mid||a.id),
     meta:[['Customer returns checked',customerRet.length],['Commission reversed correctly',reversedCount],['Not reversed',affected.length],['Estimated claim',inr(claimAmt)]],
-    desc:affected.length+' customer returns have no commission reversal entry in the Reverse Settlement. Avg commission per return: '+inr(Math.round(avgComm))+'. Total claim: '+inr(claimAmt)+'.',
-    template:'Subject: Commission not reversed on returns — '+affected.length+' orders, '+inr(claimAmt)+'\\n\\nHi Myntra Seller Support,\\n\\n'+affected.length+' customer returns have no commission reversal in our Reverse Settlement (April + May).\\n\\n'+'Returns checked: '+customerRet.length+'\\nReversed correctly: '+reversedCount+'\\nNot reversed: '+affected.length+'\\nClaim: '+inr(claimAmt)+'\\n\\nPREEMPTING STANDARD RESPONSES:'+'\\n\\n1. CHECK JUNE: If reversal was in June, share June Reverse Settlement with these order_line_ids within 5 business days. Do not close citing reversal pending without the export.'+'\\n\\n2. QC REJECTION: All returns in our proof have return_mode = customer return per Myntra own MDirect Returns Report (not warehouse-rejected, not quality-failed). If any order was QC-rejected post-pickup, provide the QC rejection report for that specific order_line_id. Blanket QCF responses without order-level proof will not be accepted.'+'\\n\\n3. IN TRANSIT: Return dates are from Myntra own returns data. If any return is still in transit, provide current logistics status for that order_line_id.'+'\\n\\nFirst 20 order line IDs:\\n'+affected.slice(0,20).map(a=>a.id).join('\\n')+'\\n\\nFull evidence attached.\\n\\nREPORT-SWITCHING DEFENSE: If Myntra responds by citing any other report (Settled_Report (Revamped), Unsettled_Report (Revamped), B2C_Report, PG Forward/Reverse Settled, PG Forward/Reverse Unsettled, Commission Invoice, Logistics Invoice, Royalty Data, or any other report not already part of this evidence) as showing a different status for these orders, that report must include the matching order_line_id alongside the claimed status. An aggregate invoice total, a report in a different format, or a status claim without order_line_id-level matching does not constitute valid rebuttal evidence. We will independently cross-verify any such report against the order_line_ids in this ticket.\n\nBrand: D\u2019Chica',
-    proof:()=>mkXLSX(affected.map(a=>{const fr=fwdMap[a.id];const comm=(fr?getCommission(fr):avgComm).toFixed(2);return[a.id,a.date||'',comm,'0.00','Commission charged on sale, not reversed on return'];}),
+    desc:affected.length+' customer returns have no commission reversal entry in the Reverse Settlement. Estimate uses each order\u2019s own category rate where available, not a flat average. Total claim: '+inr(claimAmt)+'.',
+    template:'Subject: Commission not reversed on returns — '+affected.length+' orders, '+inr(claimAmt)+'\\n\\nHi Myntra Seller Support,\\n\\n'+affected.length+' customer returns have no commission reversal in our Reverse Settlement (April + May).\\n\\n'+'Returns checked: '+customerRet.length+'\\nReversed correctly: '+reversedCount+'\\nNot reversed: '+affected.length+'\\nClaim: '+inr(claimAmt)+'\\n\\nPREEMPTING STANDARD RESPONSES:'+'\\n\\n1. CHECK JUNE: If reversal was in June, share June Reverse Settlement with these order IDs within 5 business days. Do not close citing reversal pending without the export.'+'\\n\\n2. QC REJECTION: All returns in our proof have return_mode = customer return per Myntra own MDirect Returns Report (not warehouse-rejected, not quality-failed). If any order was QC-rejected post-pickup, provide the QC rejection report for that specific order ID. Blanket QCF responses without order-level proof will not be accepted.'+'\\n\\n3. IN TRANSIT: Return dates are from Myntra own returns data. If any return is still in transit, provide current logistics status for that order_line_id.'+'\\n\\nFirst 20 order line IDs:\\n'+affected.slice(0,20).map(a=>a.id).join('\\n')+'\\n\\nFull evidence attached.\\n\\nREPORT-SWITCHING DEFENSE: If Myntra responds by citing any other report (Settled_Report (Revamped), Unsettled_Report (Revamped), B2C_Report, PG Forward/Reverse Settled, PG Forward/Reverse Unsettled, Commission Invoice, Logistics Invoice, Royalty Data, or any other report not already part of this evidence) as showing a different status for these orders, that report must include the matching order_line_id alongside the claimed status. An aggregate invoice total, a report in a different format, or a status claim without order_line_id-level matching does not constitute valid rebuttal evidence. We will independently cross-verify any such report against the order_line_ids in this ticket.\n\nBrand: D\u2019Chica',
+    proof:()=>mkXLSX(affected.map(a=>[a.mid||a.id,a.date||'',a.estComm.toFixed(2),'0.00','Commission charged on sale, not reversed on return']),
       ['Order ID','Return Date','Commission Should Reverse (\u20b9)','Reversed (\u20b9)','Issue'],'Proof_1_Comm_Not_Reversed.xlsx')
   };
 }
@@ -580,13 +623,20 @@ function ticket_closedBox(){
   const fwdMap=buildFwdMap();
   const avgComm=(D.rev||[]).reduce((s,r)=>s+getCommission(r),0)/Math.max((D.rev||[]).length,1)||123;
 
-  let revCutoff=new Date();
-  const revMax=new Date(revCutoff.getFullYear(),revCutoff.getMonth()+2,0);
+  // FIXED: same cutoff bug as ticket_commNotReversed — must use the true max date
+  // found in the uploaded reverse settlement data, never "today".
+  let revCutoff=null;
+  const _today=new Date();
+  const revMax=new Date(_today.getFullYear(),_today.getMonth()+2,0);
   (D.rev||[]).forEach(r=>{
     const k=col(r,'settlement_date_prepaid_payment','settlement_date_postpaid_payment','return_date');
     if(!k) return;
-    try{const d=parseDate(r[k]);if(!isNaN(d)&&d<=revMax&&d>revCutoff)revCutoff=d;}catch{}
+    try{
+      const d=parseDate(r[k]);
+      if(d instanceof Date && !isNaN(d.getTime()) && d<=revMax && (!revCutoff||d>revCutoff)) revCutoff=d;
+    }catch{}
   });
+  if(!revCutoff) return null;
 
   const affected=[];
   ret.forEach(r=>{
@@ -594,7 +644,7 @@ function ticket_closedBox(){
     if(!str(r,'return_mode','return mode').toUpperCase().includes('CLOSED')) return;
     const dk=col(r,'return_created_date','return_date','return_created','refunded_date');
     if(dk){
-      try{const rd=parseDate(r[dk]);if(!isNaN(rd)){const d15=new Date(rd.getTime()+15*24*60*60*1000);if(d15>revCutoff)return;}}catch{}
+      try{const rd=parseDate(r[dk]);if(!isNaN(rd)){const d15=new Date(rd.getTime()+15*24*60*60*1000);if(d15>revCutoff||!passesDay7Cap(rd,revCutoff))return;}}catch{}
     }
     const id=getOrderId(r);
     const commCol=col(r,'comm reversed','comm reverse','commission reversed');
@@ -620,6 +670,16 @@ function ticket_closedBox(){
 }
 
 function ticket_commRate(){
+  // FIXED (two bugs found in the same audit): (1) rate card lookup now matches Gender
+  // as well as Article Type + price band — ignoring Gender let a Women's rate silently
+  // stand in for a Girls rate or vice versa. (2) Myntra's settlement commission_percentage
+  // includes 18% GST on top of the rate card's pre-tax base rate; comparing them directly
+  // flagged ~98% of ALL orders as "overcharged" by exactly 18%, which was a tax unit
+  // mismatch, not a real discrepancy. Contracted rate is now grossed up by 1.18 before
+  // comparison. The statistical fallback (no rate-card match) is category-average noise,
+  // not contract evidence, and is tagged 'Statistical' so it is never presented with the
+  // same confidence as a rate-card-verified figure.
+  const GST_MULTIPLIER=1.18;
   const fwd=D.fwd||[];
   if(!fwd.length) return null;
   const useRateCard=!!(D.ratecard&&D.ratecard.commission.length);
@@ -635,19 +695,23 @@ function ticket_commRate(){
   const affected=[];let totalExcess=0;
   fwd.forEach(r=>{
     const art=getArticleType(r);const sp=getSP(r);const rate=getCommissionRate(r);
+    const gender=str(r,'gender');
     if(!art||sp===0||rate===0) return;
     let contractedRate=null;
-    if(useRateCard) contractedRate=getContractedCommRate(art,sp);
+    let method='Statistical';
+    if(useRateCard) contractedRate=getContractedCommRate(art,gender,sp);
     if(contractedRate==null){
       contractedRate=avgByType[art]||0;
-      if(rate<=contractedRate+5) return;
+      if(rate<=contractedRate+5) return; // statistical fallback: wide tolerance, low confidence
     } else {
-      if(rate<=contractedRate) return;
+      method='Rate Card';
+      contractedRate=contractedRate*GST_MULTIPLIER; // gross up pre-tax card rate before comparing to GST-inclusive charged rate
+      if(rate<=contractedRate+0.1) return; // small rounding tolerance
     }
     const excess=sp*(rate-contractedRate)/100;
     if(excess<1) return;
     totalExcess+=excess;
-    affected.push({id:getOrderId(r),sku:getSKU(r),art,sp,rate,contractedRate,excess,method:useRateCard?'Rate Card':'Statistical'});
+    affected.push({id:getOrderId(r),sku:getSKU(r),art,sp,rate,contractedRate,excess,method});
   });
   if(!affected.length||totalExcess<100) return null;
   return{
@@ -675,7 +739,8 @@ function ticket_fixedFeeOvercharge(){
   const affected=[];let totalExcess=0;
   fwd.forEach(r=>{
     const art=getArticleType(r);const sp=getSP(r);const actualFee=getFixedFee(r);
-    const contracted=getContractedFixedFee(art,sp);
+    const gender=str(r,'gender');
+    const contracted=getContractedFixedFee(art,gender,sp);
     if(contracted==null||actualFee<=contracted) return;
     const excess=actualFee-contracted;
     totalExcess+=excess;
@@ -1025,7 +1090,7 @@ function ticket_deliveredNotPaid(){
       return;
     }
     const d15=new Date(delDate.getTime()+15*24*60*60*1000);
-    if(d15<=cutoff){
+    if(d15<=cutoff && passesDay7Cap(delDate,cutoff)){
       notPaid.push({row:r,delDate,d15});
     } else {
       tooRecent.push({row:r,delDate,d15});
@@ -1122,6 +1187,75 @@ Brand: D’Chica`,
   };
 }
 
+
+// ── OPTIONAL STRICTER ELIGIBILITY: day-7-of-next-month cap ──
+// OFF by default. When enabled, a record (delivery or return) is only eligible to be
+// flagged once the settlement data's real coverage reaches the 7th of the month AFTER
+// that record's own month — e.g. a May delivery/return isn't eligible until settlement
+// data reaches 7 June, even if its own D+15 already passed earlier. This is stricter
+// than the default D+15-vs-real-coverage rule and will reduce (never increase) ticket
+// counts. Re-run after toggling to see the effect directly in the ticket numbers.
+function day7CapEnabled(){
+  const el=document.getElementById('day7CapToggle');
+  return !!(el && el.checked);
+}
+function passesDay7Cap(recordDate, coverageCutoff){
+  if(!day7CapEnabled()) return true;
+  if(!(recordDate instanceof Date) || isNaN(recordDate.getTime())) return true;
+  if(!coverageCutoff) return false;
+  const ruleCutoff = new Date(recordDate.getFullYear(), recordDate.getMonth()+1, 7, 23,59,59);
+  return coverageCutoff >= ruleCutoff;
+}
+
+function getMyntraTicketId(row){
+  // Myntra Seller Support's commission-reversal lookup indexes by order_id /
+  // store_packet_id (an 8/9/10-billion-range ID), NOT order_line_id (an
+  // 11-billion-range ID). order_line_id is still the correct join key for matching
+  // across our own reports — this is only for what we actually show/send to Myntra.
+  const k=col(row,'order_id','store_packet_id','order id');
+  const v=k?String(row[k]||'').trim():'';
+  return v.endsWith('.0')?v.slice(0,-2):v;
+}
+
+const _artAvgCommCache={};
+function getArticleAvgCommRate(art){
+  // Weighted-average charged commission rate for an article type, from Forward
+  // Settlement data. Used as a per-order estimate when an order genuinely cannot be
+  // found in Forward Settlement (e.g. it was returned before ever being forward-
+  // settled) — far more defensible than a single flat number repeated across every
+  // order regardless of category, which is what this replaces.
+  if(_artAvgCommCache[art]!==undefined) return _artAvgCommCache[art];
+  let spTotal=0, commTotal=0;
+  (D.fwd||[]).forEach(r=>{
+    if(getArticleType(r)!==art) return;
+    const sp=getSP(r), rate=getCommissionRate(r);
+    if(sp>0&&rate>0){ spTotal+=sp; commTotal+=rate*sp/100; }
+  });
+  const rate = spTotal>0 ? commTotal/spTotal*100 : null;
+  _artAvgCommCache[art]=rate;
+  return rate;
+}
+
+function buildSalesMap(){
+  const map={};
+  (D.sales||[]).forEach(r=>{
+    const id=getOrderId(r);
+    if(id) map[id]={art:getArticleType(r), sp:getSP(r)};
+  });
+  return map;
+}
+
+function estimateCommission(returnRow, fwdMap, salesMap, fallbackAvg){
+  const id=getOrderId(returnRow);
+  const fr=fwdMap[id];
+  if(fr) return getCommission(fr); // best: actual charged commission from Forward Settlement
+  const sInfo=salesMap[id];
+  if(sInfo && sInfo.art && sInfo.sp>0){
+    const artRate=getArticleAvgCommRate(sInfo.art);
+    if(artRate!=null) return sInfo.sp*artRate/100; // good: category-specific estimate at this order's real price
+  }
+  return fallbackAvg; // last resort: overall average — only when article type is unknown
+}
 
 function toggleCard(el){el.parentElement.classList.toggle('open');}
 
@@ -1366,7 +1500,70 @@ function prog(pct){
   if(pct>=100)setTimeout(()=>{w.style.display='none';},400);
 }
 
+// ── TARGET MONTH SCOPE CHECK ──
+// Advisory only — never filters or drops data. Sales should cover the target month
+// only; Forward/Reverse/Returns should cover target month + the following month
+// (since a month's deliveries are typically settled in the following cycle).
+function getDateRange(rows, colPatterns){
+  let min=null, max=null;
+  rows.forEach(r=>{
+    const k=col(r,...colPatterns);
+    if(!k) return;
+    const d=parseDate(r[k]);
+    if(d instanceof Date && !isNaN(d.getTime())){
+      if(!min||d<min) min=d;
+      if(!max||d>max) max=d;
+    }
+  });
+  return {min,max};
+}
+
+function checkMonthScope(){
+  const el=document.getElementById('scopeWarnings');
+  const tmInput=document.getElementById('targetMonth');
+  if(!el||!tmInput||!tmInput.value) { if(el) el.innerHTML=''; return; }
+
+  const [ty,tm]=tmInput.value.split('-').map(Number);
+  const targetStart=new Date(ty,tm-1,1);
+  const targetEnd=new Date(ty,tm,0,23,59,59);
+  const nextEnd=new Date(ty,tm+1,0,23,59,59);
+
+  const warnings=[];
+
+  if(D.sales&&D.sales.length){
+    const {min,max}=getDateRange(D.sales,['delivered on','delivery_date','delivered_on','order_delivered_date']);
+    if(min&&max){
+      if(min<targetStart||max>targetEnd){
+        warnings.push(`Sales data spans ${min.toLocaleDateString('en-IN')} – ${max.toLocaleDateString('en-IN')}, outside the target month (${targetStart.toLocaleDateString('en-IN')} – ${targetEnd.toLocaleDateString('en-IN')}). Per your workflow, Sales should be target-month only — check you haven't uploaded an extra month.`);
+      }
+    }
+  }
+
+  [['Forward',D.fwd],['Reverse',D.rev],['Returns',D.returns]].forEach(([label,rows])=>{
+    if(!rows||!rows.length) return;
+    const {min,max}=getDateRange(rows,['settlement_date_prepaid_payment','settlement_date_postpaid_payment','return_date','return_created_date']);
+    if(min&&max){
+      if(max<targetEnd){
+        warnings.push(`${label} Settlement data ends ${max.toLocaleDateString('en-IN')} — doesn't yet reach into the month after target (${nextEnd.toLocaleDateString('en-IN')}). D+15 checks for late-month target deliveries may be incomplete until next month's ${label.toLowerCase()} file is added.`);
+      }
+      if(min>targetEnd){
+        warnings.push(`${label} Settlement data starts ${min.toLocaleDateString('en-IN')}, entirely after the target month — check the right file was uploaded.`);
+      }
+    }
+  });
+
+  if(!warnings.length){ el.innerHTML=''; return; }
+  el.innerHTML='<div style="background:var(--amber-bg);border:1px solid var(--amber-border);border-radius:6px;padding:10px 12px;">'+
+    warnings.map(w=>`<div style="font-size:12px;color:var(--amber);margin-bottom:4px;">⚠ ${w}</div>`).join('')+
+    '</div>';
+}
+document.addEventListener('DOMContentLoaded',()=>{
+  const tm=document.getElementById('targetMonth');
+  if(tm) tm.addEventListener('change',checkMonthScope);
+});
+
 function updateRunBtn(){
+  checkMonthScope();
   const hasMin=!!(D.fwd&&D.fwd.length&&D.rev&&D.rev.length&&D.returns&&D.returns.length&&D.sales&&D.sales.length);
   const btn=document.getElementById('runBtn');
   btn.disabled=!hasMin;
