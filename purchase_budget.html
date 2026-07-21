@@ -78,15 +78,29 @@ textarea { width: 100%; resize: vertical; min-height: 60px; }
 .tab-bar { display: flex; background: #eee; border-radius: 99px; padding: 3px; margin-bottom: 1rem; width: fit-content; }
 .tab-btn { padding: 6px 18px; border-radius: 99px; font-size: 13px; font-weight: 500; cursor: pointer; border: none; background: transparent; color: #888; font-family: inherit; }
 .tab-btn.active { background: #fff; color: #1a1a1a; box-shadow: 0 1px 4px rgba(0,0,0,.1); }
+/* Month summary table */
+.month-summary-title { font-size: 13px; font-weight: 600; margin: 1.5rem 0 .6rem; color: #1a1a1a; }
+.msummary-wrap { overflow-x: auto; margin-bottom: 1rem; }
+.msummary-table { border-collapse: collapse; width: 100%; font-size: 11px; min-width: 400px; }
+.msummary-table th { background: #f5f4f0; padding: 7px 10px; text-align: left; font-weight: 600; color: #888; border-bottom: 0.5px solid #ddd; white-space: nowrap; }
+.msummary-table th:not(:first-child) { text-align: right; }
+.msummary-table td { padding: 6px 10px; border-bottom: 0.5px solid #f0f0f0; font-size: 11px; }
+.msummary-table td:not(:first-child) { text-align: right; }
+.msummary-table .sec-row td { background: #f5f4f0; font-weight: 700; font-size: 10px; color: #888; text-transform: uppercase; letter-spacing: .04em; padding: 4px 10px; }
+.msummary-table .total-row td { background: #EEEDFE; font-weight: 700; border-top: 0.5px solid #ddd; }
+.msummary-table .over { color: #A32D2D; }
+.msummary-table .ok { color: #0F6E56; }
+/* Cross-month summary table */
 .summary-wrap { overflow-x: auto; margin-bottom: 1.5rem; }
 .summary-table { border-collapse: collapse; width: 100%; font-size: 11px; min-width: 600px; }
 .summary-table th { background: #f5f4f0; padding: 7px 10px; text-align: left; font-weight: 600; color: #888; border-bottom: 0.5px solid #ddd; white-space: nowrap; }
-.summary-table td { padding: 7px 10px; border-bottom: 0.5px solid #f0f0f0; vertical-align: top; }
-.summary-table .month-cell { font-weight: 500; white-space: nowrap; }
+.summary-table td { padding: 7px 10px; border-bottom: 0.5px solid #f0f0f0; vertical-align: top; white-space: nowrap; }
+.summary-table .month-cell { font-weight: 500; }
 .summary-table .num { font-size: 11px; }
 .summary-table .over { color: #A32D2D; }
 .summary-table .ok { color: #0F6E56; }
-.summary-section-title { font-size: 11px; font-weight: 600; color: #888; text-transform: uppercase; letter-spacing: .05em; margin: 1rem 0 .5rem; }
+.summary-table .sec-header td { background: #EEEDFE; color: #3C3489; font-weight: 700; font-size: 10px; text-transform: uppercase; letter-spacing: .04em; padding: 4px 10px; }
+.summary-table .total-row td { background: #f5f4f0; font-weight: 700; border-top: 0.5px solid #ddd; }
 </style>
 </head>
 <body>
@@ -119,46 +133,32 @@ var today = function(){return new Date().toISOString().slice(0,10);};
 
 function currentMonthYear(){var d=new Date();return {month:CAL_MONTHS[d.getMonth()],year:d.getFullYear()};}
 function getFY(month,year){var idx=CAL_MONTHS.indexOf(month);if(idx>=3)return "FY "+year+"-"+String(year+1).slice(2);else return "FY "+(year-1)+"-"+String(year).slice(2);}
-
-// NEW: monthKey format is now "2026-06" (year-month) to prevent Google Sheets date conversion
-function monthKey(month, year) {
-  var idx = CAL_MONTHS.indexOf(month);
-  return year + "-" + String(idx + 1).padStart(2, "0");
-}
-
-// Parse a monthKey back to {month, year} — handles both old "June-2026" and new "2026-06" formats
-function parseMonthKey(mk) {
-  if (!mk) return null;
-  // New format: "2026-06"
-  var newFmt = mk.match(/^(\d{4})-(\d{2})$/);
-  if (newFmt) {
-    var yr = parseInt(newFmt[1]), mo = parseInt(newFmt[2]) - 1;
-    return { month: CAL_MONTHS[mo], year: yr };
-  }
-  // Old format: "June-2026"
-  var oldFmt = mk.match(/^([A-Za-z]+)-(\d{4})$/);
-  if (oldFmt) {
-    return { month: oldFmt[1], year: parseInt(oldFmt[2]) };
-  }
+function monthKey(month,year){var idx=CAL_MONTHS.indexOf(month);return year+"-"+String(idx+1).padStart(2,"0");}
+function parseMonthKey(mk){
+  if(!mk)return null;
+  var n=mk.match(/^(\d{4})-(\d{2})$/);
+  if(n)return {month:CAL_MONTHS[parseInt(n[2])-1],year:parseInt(n[1])};
+  var o=mk.match(/^([A-Za-z]+)-(\d{4})$/);
+  if(o)return {month:o[1],year:parseInt(o[2])};
   return null;
 }
-
-function getEntryMonthKey(entry) {
-  if (entry.monthKey && entry.monthKey.trim() !== "" && entry.monthKey !== "0") {
-    // Normalise old format to new format
-    var parsed = parseMonthKey(entry.monthKey.trim());
-    if (parsed) return monthKey(parsed.month, parsed.year);
-  }
-  if (entry.date) {
-    var d = new Date(entry.date);
-    if (!isNaN(d.getTime())) return monthKey(CAL_MONTHS[d.getMonth()], d.getFullYear());
-  }
-  var c = currentMonthYear();
-  return monthKey(c.month, c.year);
+function normaliseKey(mk){
+  if(!mk||mk.trim()===""||mk==="0")return "";
+  if(/^\d{4}-\d{2}$/.test(mk))return mk;
+  var o=mk.match(/^([A-Za-z]+)-(\d{4})$/);
+  if(o){var idx=CAL_MONTHS.indexOf(o[1]);if(idx>=0)return o[2]+"-"+String(idx+1).padStart(2,"0");}
+  var d=mk.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+  if(d)return d[3]+"-"+String(parseInt(d[1])).padStart(2,"0");
+  return mk;
+}
+function getEntryMonthKey(entry){
+  if(entry.monthKey&&entry.monthKey.trim()!==""&&entry.monthKey!=="0"){var n=normaliseKey(entry.monthKey.trim());if(n)return n;}
+  if(entry.date){var d=new Date(entry.date);if(!isNaN(d.getTime()))return monthKey(CAL_MONTHS[d.getMonth()],d.getFullYear());}
+  var c=currentMonthYear();return monthKey(c.month,c.year);
 }
 
-var cur = currentMonthYear();
-var state = {
+var cur=currentMonthYear();
+var state={
   loggedIn:false,role:null,loginError:"",pwInput:"",roleInput:"purchase",
   data:{budgets:{},entries:[]},
   loading:false,syncing:false,syncOk:null,error:null,
@@ -183,7 +183,8 @@ function loadData(){
   });
 }
 function getBudgetsForMonth(month,year){
-  var key=monthKey(month,year),b=state.data.budgets[key]||{},result={};
+  var key=monthKey(month,year),result={};
+  var b=state.data.budgets[key]||state.data.budgets[month+"-"+year]||{};
   ALL_KEYS.forEach(function(k){result[k]=Number(b[k]||0);});
   return result;
 }
@@ -193,8 +194,7 @@ function getPrevMonthBudgets(month,year){
   return getBudgetsForMonth(pm,py);
 }
 function el(tag,attrs){
-  var e=document.createElement(tag);
-  var ch=Array.prototype.slice.call(arguments,2);
+  var e=document.createElement(tag);var ch=Array.prototype.slice.call(arguments,2);
   if(attrs){Object.keys(attrs).forEach(function(k){var v=attrs[k];if(k==="style"&&typeof v==="object"){Object.assign(e.style,v);}else if(k.indexOf("on")===0){e.addEventListener(k.slice(2).toLowerCase(),v);}else if(k==="className"){e.className=v;}else{e.setAttribute(k,v);}});}
   ch.forEach(function(c){if(c==null)return;if(Array.isArray(c)){c.forEach(function(x){if(x!=null)e.appendChild(typeof x==="string"?document.createTextNode(x):x);});}else{e.appendChild(typeof c==="string"?document.createTextNode(c):c);}});
   return e;
@@ -241,8 +241,7 @@ function renderLogin(root){
   var rs=el("select",{className:"login-inp"}),o1=el("option",{value:"purchase"},"Purchase Manager"),o2=el("option",{value:"accounts"},"Accounts");
   if(state.roleInput==="accounts")o2.selected=true;rs.appendChild(o1);rs.appendChild(o2);
   rs.addEventListener("change",function(e){state.roleInput=e.target.value;});
-  card.appendChild(rs);
-  card.appendChild(el("label",{className:"login-label"},"Password"));
+  card.appendChild(rs);card.appendChild(el("label",{className:"login-label"},"Password"));
   var pw=el("input",{type:"password",placeholder:"Enter your password",className:"login-inp"});pw.value=state.pwInput;
   pw.addEventListener("input",function(e){state.pwInput=e.target.value;});
   pw.addEventListener("keydown",function(e){if(e.key==="Enter")tryLogin();});
@@ -267,7 +266,7 @@ function renderApp(app){
   var le=me.filter(function(e){return(filterStatus==="All"||e.status===filterStatus.toLowerCase())&&(filterCat==="All"||e.category===filterCat);});
 
   app.appendChild(el("div",{className:"header-row"},
-    el("div",{},el("div",{className:"page-title"},"Production budget"),el("div",{className:"page-sub"},gb>0?"Total "+fmt(gb)+" \u00B7 Approved "+fmt(ga)+" \u00B7 "+pct(ga,gb)+"% used":selMonth+" "+selYear+" \u00B7 No budgets set")),
+    el("div",{},el("div",{className:"page-title"},"Production budget"),el("div",{className:"page-sub"},gb>0?"Allocated: "+fmt(gb)+" \u00B7 Approved: "+fmt(ga)+" \u00B7 "+pct(ga,gb)+"% used":selMonth+" "+selYear+" \u00B7 No budgets set")),
     el("div",{style:{display:"flex",gap:"8px",alignItems:"center"}},el("button",{className:"btn-ghost",onClick:loadData},icon("refresh")),el("button",{className:"logout-btn",onClick:function(){setState({loggedIn:false,role:null,pwInput:"",roleInput:"purchase"});}},"Sign out"))
   ));
   var dc="dot"+(syncing?" spin":syncOk===true?" green":syncOk===false?" red":"");
@@ -275,11 +274,9 @@ function renderApp(app){
   if(loading){app.appendChild(el("div",{className:"loading"},"Loading..."));return;}
 
   var mb=el("div",{className:"month-bar"});mb.appendChild(el("span",{className:"month-label"},"Viewing:"));
-  var ms=el("select",{});
-  CAL_MONTHS.forEach(function(m){var o=el("option",{value:m},m);if(m===selMonth)o.selected=true;ms.appendChild(o);});
+  var ms=el("select",{});CAL_MONTHS.forEach(function(m){var o=el("option",{value:m},m);if(m===selMonth)o.selected=true;ms.appendChild(o);});
   ms.addEventListener("change",function(e){setState({selMonth:e.target.value,filterStatus:"All",filterCat:"All"});});
-  var ys=el("select",{});
-  for(var y=new Date().getFullYear()-2;y<=new Date().getFullYear()+1;y++){var yo=el("option",{value:y},String(y));if(y===selYear)yo.selected=true;ys.appendChild(yo);}
+  var ys=el("select",{});for(var y=new Date().getFullYear()-2;y<=new Date().getFullYear()+1;y++){var yo=el("option",{value:y},String(y));if(y===selYear)yo.selected=true;ys.appendChild(yo);}
   ys.addEventListener("change",function(e){setState({selYear:parseInt(e.target.value),filterStatus:"All",filterCat:"All"});});
   mb.appendChild(ms);mb.appendChild(ys);mb.appendChild(el("span",{className:"fy-label"},getFY(selMonth,selYear)));app.appendChild(mb);
 
@@ -299,17 +296,53 @@ function renderApp(app){
   var ed=role==="accounts";
   app.appendChild(el("div",{className:"section-title"},"Fabric"));
   var fg=el("div",{className:"budget-grid"});FABRIC_KEYS.forEach(function(k){fg.appendChild(budgetCard(k,budgets[k],ca[k],cp[k],ed,selMonth,selYear));});app.appendChild(fg);
-
   app.appendChild(el("div",{className:"section-title"},"Other Categories"));
-  var og=el("div",{className:"budget-grid"});
-  ["Packaging","Trims","Finished Product"].forEach(function(k){og.appendChild(budgetCard(k,budgets[k],ca[k],cp[k],ed,selMonth,selYear));});
-  app.appendChild(og);
-  var og2=el("div",{className:"budget-grid-2"});
-  ["Cash Purchase","Tailor Payments"].forEach(function(k){og2.appendChild(budgetCard(k,budgets[k],ca[k],cp[k],ed,selMonth,selYear));});
-  app.appendChild(og2);
-
+  var og=el("div",{className:"budget-grid"});["Packaging","Trims","Finished Product"].forEach(function(k){og.appendChild(budgetCard(k,budgets[k],ca[k],cp[k],ed,selMonth,selYear));});app.appendChild(og);
+  var og2=el("div",{className:"budget-grid-2"});["Cash Purchase","Tailor Payments"].forEach(function(k){og2.appendChild(budgetCard(k,budgets[k],ca[k],cp[k],ed,selMonth,selYear));});app.appendChild(og2);
   app.appendChild(el("div",{className:"section-title"},"MCF (Additional Budget)"));
   var mg=el("div",{className:"budget-grid-4"});MCF_KEYS.forEach(function(k){mg.appendChild(budgetCard(k,budgets[k],ca[k],cp[k],ed,selMonth,selYear));});app.appendChild(mg);
+
+  // ── Month summary table ──────────────────────────────────────────────────
+  app.appendChild(el("div",{className:"month-summary-title"},selMonth+" "+selYear+" \u2014 Summary"));
+  var mswrap=el("div",{className:"msummary-wrap"});
+  var mst=el("table",{className:"msummary-table"});
+  var msth=el("tr",{});
+  ["Category","Allocated","Approved","Pending","Remaining","% Used"].forEach(function(h){msth.appendChild(el("th",{},h));});
+  mst.appendChild(el("thead",{},msth));
+  var mstb=el("tbody",{});
+  var secs=[{label:"FABRIC",keys:FABRIC_KEYS},{label:"OTHER CATEGORIES",keys:OTHER_KEYS},{label:"MCF",keys:MCF_KEYS}];
+  var gtA=0,gtAp=0,gtP=0;
+  secs.forEach(function(sec){
+    var sr=el("tr",{className:"sec-row"});var std=el("td",{colspan:"6"},sec.label);sr.appendChild(std);mstb.appendChild(sr);
+    sec.keys.forEach(function(k){
+      var alloc=budgets[k],appr=ca[k],pend=cp[k],rem=alloc-appr;
+      gtA+=alloc;gtAp+=appr;gtP+=pend;
+      var tr=el("tr",{});
+      var col=CAT_COLOR[k]||{stroke:"#aaa"};
+      var ctd=el("td",{});
+      ctd.appendChild(el("span",{style:{display:"inline-block",width:"7px",height:"7px",borderRadius:"50%",background:col.stroke,marginRight:"6px",verticalAlign:"middle"}}));
+      ctd.appendChild(document.createTextNode(k));
+      tr.appendChild(ctd);
+      tr.appendChild(el("td",{},alloc>0?fmt(alloc):"\u2014"));
+      tr.appendChild(el("td",{style:{color:"#085041"}},appr>0?fmt(appr):"\u2014"));
+      tr.appendChild(el("td",{style:{color:"#7A5500"}},pend>0?fmt(pend):"\u2014"));
+      tr.appendChild(el("td",{className:alloc>0?(rem<0?"over":"ok"):""},alloc>0?(rem<0?"\u25BC "+fmt(Math.abs(rem)):fmt(rem)):"\u2014"));
+      tr.appendChild(el("td",{},alloc>0?pct(appr,alloc)+"%":"\u2014"));
+      mstb.appendChild(tr);
+    });
+  });
+  var gtr=el("tr",{className:"total-row"});
+  var gtRem=gtA-gtAp;
+  gtr.appendChild(el("td",{},"TOTAL"));
+  gtr.appendChild(el("td",{},fmt(gtA)));
+  gtr.appendChild(el("td",{style:{color:"#085041"}},fmt(gtAp)));
+  gtr.appendChild(el("td",{style:{color:"#7A5500"}},fmt(gtP)));
+  gtr.appendChild(el("td",{className:gtRem<0?"over":"ok"},gtRem<0?"\u25BC "+fmt(Math.abs(gtRem)):fmt(gtRem)));
+  gtr.appendChild(el("td",{},pct(gtAp,gtA)+"%"));
+  mstb.appendChild(gtr);
+  mst.appendChild(mstb);mswrap.appendChild(mst);app.appendChild(mswrap);
+  // ────────────────────────────────────────────────────────────────────────
+
   app.appendChild(el("hr",{className:"divider"}));
 
   if(role==="purchase"){
@@ -349,38 +382,86 @@ function renderApp(app){
 
 function renderSummary(app){
   var data=state.data,ae=data.entries||[],ms={};
-  Object.keys(data.budgets||{}).forEach(function(k){ms[k]=true;});
-  ae.forEach(function(e){ms[getEntryMonthKey(e)]=true;});
+  Object.keys(data.budgets||{}).forEach(function(k){var nk=normaliseKey(k);if(nk)ms[nk]=true;});
+  ae.forEach(function(e){var nk=getEntryMonthKey(e);if(nk)ms[nk]=true;});
   var mks=Object.keys(ms).sort(function(a,b){
-    var pa=parseMonthKey(a),pb=parseMonthKey(b);
-    if(!pa||!pb)return 0;
+    var pa=parseMonthKey(a),pb=parseMonthKey(b);if(!pa||!pb)return 0;
     var am=CAL_MONTHS.indexOf(pa.month),bm=CAL_MONTHS.indexOf(pb.month);
-    if(pa.year!==pb.year)return pa.year-pb.year;
-    return am-bm;
+    if(pa.year!==pb.year)return pa.year-pb.year;return am-bm;
   });
   if(mks.length===0){app.appendChild(el("div",{className:"empty"},"No monthly data yet."));return;}
-  var sections=[{title:"Fabric",keys:FABRIC_KEYS},{title:"Other Categories",keys:OTHER_KEYS},{title:"MCF",keys:MCF_KEYS}];
-  sections.forEach(function(sec){
-    app.appendChild(el("div",{className:"summary-section-title"},sec.title));
-    var wrap=el("div",{className:"summary-wrap"}),tbl=el("table",{className:"summary-table"}),th=el("tr",{});
-    th.appendChild(el("th",{},"Month"));sec.keys.forEach(function(k){th.appendChild(el("th",{},k));});th.appendChild(el("th",{},"Total"));tbl.appendChild(el("thead",{},th));
-    var tbody=el("tbody",{});
-    mks.forEach(function(mk){
-      var parsed=parseMonthKey(mk),mn=parsed?parsed.month:"?",my=parsed?parsed.year:"?",bd=data.budgets[mk]||{},tr=el("tr",{});
-      tr.appendChild(el("td",{className:"month-cell"},mn+" "+my));
-      var rb=0,ra=0;
-      sec.keys.forEach(function(k){
-        var b=Number(bd[k]||0),ap=ae.filter(function(e){return getEntryMonthKey(e)===mk&&e.category===k&&e.status==="approved";}).reduce(function(s,e){return s+Number(e.amount);},0);
-        rb+=b;ra+=ap;var rem=b-ap,td=el("td",{});
-        if(b>0){td.appendChild(el("div",{className:"num"},fmt(b)));td.appendChild(el("div",{className:"num",style:{color:"#888"}},"Appr: "+fmt(ap)));td.appendChild(el("div",{className:"num "+(rem<0?"over":"ok")},(rem<0?"\u25BC ":"\u25B2 ")+fmt(Math.abs(rem))));}
-        else{td.appendChild(el("div",{style:{color:"#ccc",fontSize:"11px"}},"\u2014"));}
+
+  var secs=[{label:"FABRIC",keys:FABRIC_KEYS},{label:"OTHER CATEGORIES",keys:OTHER_KEYS},{label:"MCF",keys:MCF_KEYS}];
+  var wrap=el("div",{className:"summary-wrap"});
+  var tbl=el("table",{className:"summary-table"});
+
+  // Header row
+  var thRow=el("tr",{});
+  thRow.appendChild(el("th",{},"Category"));
+  mks.forEach(function(mk){var p=parseMonthKey(mk);thRow.appendChild(el("th",{},p?p.month.slice(0,3)+" "+String(p.year).slice(2):mk));});
+  thRow.appendChild(el("th",{},"Total"));
+  tbl.appendChild(el("thead",{},thRow));
+  var tbody=el("tbody",{});
+
+  // Grand total accumulators per month
+  var gtAlloc=new Array(mks.length).fill(0);
+  var gtAppr=new Array(mks.length).fill(0);
+  var gtTotalAlloc=0,gtTotalAppr=0;
+
+  secs.forEach(function(sec){
+    var sr=el("tr",{className:"sec-header"});
+    sr.appendChild(el("td",{colspan:String(mks.length+2)},sec.label));
+    tbody.appendChild(sr);
+    sec.keys.forEach(function(k){
+      var tr=el("tr",{});
+      var col=CAT_COLOR[k]||{stroke:"#aaa"};
+      var ctd=el("td",{});
+      ctd.appendChild(el("span",{style:{display:"inline-block",width:"7px",height:"7px",borderRadius:"50%",background:col.stroke,marginRight:"5px",verticalAlign:"middle"}}));
+      ctd.appendChild(document.createTextNode(k));
+      tr.appendChild(ctd);
+      var rowA=0,rowAp=0;
+      mks.forEach(function(mk,mi){
+        var nk=normaliseKey(mk)||mk;
+        var bd=data.budgets[nk]||data.budgets[mk]||{};
+        var alloc=Number(bd[k]||0);
+        var appr=ae.filter(function(e){return getEntryMonthKey(e)===nk&&e.category===k&&e.status==="approved";}).reduce(function(s,e){return s+Number(e.amount);},0);
+        rowA+=alloc;rowAp+=appr;gtAlloc[mi]+=alloc;gtAppr[mi]+=appr;
+        var td=el("td",{});
+        if(alloc>0||appr>0){
+          td.appendChild(el("div",{className:"num",style:{fontWeight:"600"}},alloc>0?fmt(alloc):"\u2014"));
+          td.appendChild(el("div",{className:"num",style:{color:"#888"}},"Appr: "+fmt(appr)));
+          var rem=alloc-appr;
+          td.appendChild(el("div",{className:"num "+(rem<0?"over":"ok")},(rem<0?"\u25BC ":"\u25B2 ")+fmt(Math.abs(rem))));
+        }else{td.appendChild(el("div",{style:{color:"#ccc"}},"\u2014"));}
         tr.appendChild(td);
       });
-      var tt=el("td",{});if(rb>0){tt.appendChild(el("div",{className:"num",style:{fontWeight:"600"}},fmt(rb)));tt.appendChild(el("div",{className:"num",style:{color:"#888"}},"Appr: "+fmt(ra)));var tr2=rb-ra;tt.appendChild(el("div",{className:"num "+(tr2<0?"over":"ok")},(tr2<0?"\u25BC ":"\u25B2 ")+fmt(Math.abs(tr2))));}
+      gtTotalAlloc+=rowA;gtTotalAppr+=rowAp;
+      var tt=el("td",{});
+      tt.appendChild(el("div",{className:"num",style:{fontWeight:"600"}},rowA>0?fmt(rowA):"\u2014"));
+      tt.appendChild(el("div",{className:"num",style:{color:"#888"}},"Appr: "+fmt(rowAp)));
+      var rr=rowA-rowAp;
+      tt.appendChild(el("div",{className:"num "+(rr<0?"over":"ok")},(rr<0?"\u25BC ":"\u25B2 ")+fmt(Math.abs(rr))));
       tr.appendChild(tt);tbody.appendChild(tr);
     });
-    tbl.appendChild(tbody);wrap.appendChild(tbl);app.appendChild(wrap);
   });
+
+  // Grand total row
+  var gtr=el("tr",{className:"total-row"});gtr.appendChild(el("td",{},"GRAND TOTAL"));
+  mks.forEach(function(mk,mi){
+    var td=el("td",{});
+    td.appendChild(el("div",{className:"num"},fmt(gtAlloc[mi])));
+    td.appendChild(el("div",{className:"num",style:{color:"#888"}},"Appr: "+fmt(gtAppr[mi])));
+    var r=gtAlloc[mi]-gtAppr[mi];
+    td.appendChild(el("div",{className:"num "+(r<0?"over":"ok")},(r<0?"\u25BC ":"\u25B2 ")+fmt(Math.abs(r))));
+    gtr.appendChild(td);
+  });
+  var gtt=el("td",{});
+  gtt.appendChild(el("div",{className:"num"},fmt(gtTotalAlloc)));
+  gtt.appendChild(el("div",{className:"num",style:{color:"#888"}},"Appr: "+fmt(gtTotalAppr)));
+  var gr=gtTotalAlloc-gtTotalAppr;
+  gtt.appendChild(el("div",{className:"num "+(gr<0?"over":"ok")},(gr<0?"\u25BC ":"\u25B2 ")+fmt(Math.abs(gr))));
+  gtr.appendChild(gtt);tbody.appendChild(gtr);
+  tbl.appendChild(tbody);wrap.appendChild(tbl);app.appendChild(wrap);
 }
 
 function renderEntries(entries,role,rejectingId,app,ca,budgets){
