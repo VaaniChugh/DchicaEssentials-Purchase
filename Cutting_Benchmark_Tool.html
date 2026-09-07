@@ -357,10 +357,10 @@ document.getElementById('run-btn').addEventListener('click',()=>{
     const todayReq=todayReqData[d.sku]||0;
     const netTodayReq=Math.max(0,todayReq-d.closing);
 
-    // FIX: today's requirement is always the floor
-    // If history says less (or zero), we still honour today's demand
-    const net7=Math.max(net7hist,netTodayReq);
-    const net15=Math.max(net15hist,netTodayReq);
+    // RULE: today's requirement is the only driver for cuts
+    // If no today's requirement, SKU never appears in cut list regardless of history
+    const net7=todayReq>0?Math.max(net7hist,netTodayReq):0;
+    const net15=todayReq>0?Math.max(net15hist,netTodayReq):0;
 
     const benchMin=snapToLot(net7,lots,tolerance);
     const benchMax=snapToLot(net15,lots,tolerance);
