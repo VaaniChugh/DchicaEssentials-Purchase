@@ -251,16 +251,14 @@ function parseFile(file, cb){
 
 function snapToLot(x, lots, tolerance){
   if(x<=0) return 0;
-  const tol=tolerance/100;
-  for(const lot of [...lots].sort((a,b)=>a-b)){
+  const sorted=[...lots].sort((a,b)=>a-b);
+  // Always find the smallest lot that is >= x (never cuts below need)
+  for(const lot of sorted){
     if(lot>=x) return lot;
-    if((x-lot)/x<=tol) return lot;
   }
-  const maxLot=Math.max(...lots);
-  const mult=Math.ceil(x/maxLot);
-  const lower=(mult-1)*maxLot;
-  if(lower>0&&(x-lower)/x<=tol) return lower;
-  return mult*maxLot;
+  // x > max lot: always round UP to next full multiple — never round down
+  const maxLot=Math.max(...sorted);
+  return Math.ceil(x/maxLot)*maxLot;
 }
 
 document.getElementById('file-main').addEventListener('change',e=>{
