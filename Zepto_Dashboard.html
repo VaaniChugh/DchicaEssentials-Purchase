@@ -91,7 +91,7 @@ details summary{cursor:pointer;font-weight:600;font-size:.88rem}
   <section class="card" aria-label="Uploads">
     <div class="ups">
       <label class="drop" id="d_po" for="f_po"><b>Zepto PO files</b><small>The PO export as Zepto sends it (PO No., PO Date, Del Location, EAN, Dchica Sku, Qty, TP). Several files at once is fine; re-uploading a PO replaces it.</small><span class="st" id="s_po"></span><input type="file" id="f_po" accept=".xlsx,.xls,.csv" multiple hidden></label>
-      <label class="drop" id="d_sa" for="f_sa"><b>Zepto SKU-wise sales sheet</b><small>Sales and live stock by SKU. Works with Zepto's Sale &amp; Inventory sheet (SKU, Sold Qty, Current Live Stock Qty, plus date-wise sales), daily SKU rows, or Sold Last 7 / 30 Days columns.</small><span class="st" id="s_sa"></span><input type="file" id="f_sa" accept=".xlsx,.xls,.csv" hidden></label>
+      <label class="drop" id="d_sa" for="f_sa"><b>Zepto SKU-wise sales sheet</b><small>Sales, live stock and stock in transit by SKU. Best with the D'Chica upload format (Sold Last 7 / 30 Days, Stock In Transit Qty). Also reads Zepto's Sale &amp; Inventory sheet as it comes, or daily SKU rows.</small><span class="st" id="s_sa"></span><input type="file" id="f_sa" accept=".xlsx,.xls,.csv" hidden></label>
       <label class="drop" id="d_ma" for="f_ma"><b>SKU master (optional)</b><small>The template's SKU_Master tab, linking Zepto SKU IDs to EAN and D'Chica SKU codes. A built-in master with the 29 current SKUs is used until you upload one.</small><span class="st" id="s_ma"></span><input type="file" id="f_ma" accept=".xlsx,.xls" hidden></label>
     </div>
     <div class="banner" id="banner"></div>
@@ -113,7 +113,7 @@ details summary{cursor:pointer;font-weight:600;font-size:.88rem}
     <button role="tab" id="t_check" aria-selected="true" aria-controls="v_check">PO check<span class="ct" id="c_check"></span></button>
     <button role="tab" id="t_alert" aria-selected="false" aria-controls="v_alert">Overstock alerts<span class="ct" id="c_alert"></span></button>
     <button role="tab" id="t_pay" aria-selected="false" aria-controls="v_pay">Payouts</button>
-    <button role="tab" id="t_sku" aria-selected="false" aria-controls="v_sku">SKU stock</button>
+    <button role="tab" id="t_sku" aria-selected="false" aria-controls="v_sku">Stock &amp; reorder<span class="ct" id="c_sku"></span></button>
   </nav>
 
   <section id="v_check" role="tabpanel" aria-labelledby="t_check" class="card">
@@ -138,7 +138,8 @@ details summary{cursor:pointer;font-weight:600;font-size:.88rem}
   </section>
 
   <section id="v_sku" role="tabpanel" aria-labelledby="t_sku" class="card" hidden>
-    <h2>Stock position by SKU</h2>
+    <h2>Does each SKU need a PO?</h2>
+    <p style="margin:0;font-size:.9rem" id="skusum"></p>
     <div class="tbl"><table id="tb_sku"></table></div>
   </section>
 
@@ -170,7 +171,7 @@ UI.status=UI.status||{};UI.grn=UI.grn||{};
 const saveUI=()=>{try{localStorage.setItem("zeptoPoDesk",JSON.stringify(UI))}catch(e){}};
 let ISSUES=[];
 
-function masterFromRows(rows){const m=new Map();for(const r of rows){const key=r.id||r.code;if(!key)continue;m.set(key,{...r,key})}return m}
+function masterFromRows(rows){const m=new Map();for(const r of rows){const key=r.id||r.code||r.internal;if(!key)continue;m.set(key,{...r,key})}return m}
 function loadSample(){
   ST.master=masterFromRows(SAMPLE.master.map(([id,name,cat,price,ean,code])=>({id,name,cat,price,ean,code})));
   const dl=SAMPLE.daily.map(([d,u])=>({date:toDate(d),u}));
@@ -189,11 +190,11 @@ const ALIAS={
   qty:["qty","poqty","orderedqty","quantity"],tp:["tp","landingprice","unitprice","price"],status:["postatus","status"],grn:["grnqty","receivedqty"],
   ask:["askdate","expirydate","deliverydate"],pay:["paymentdate"],
 };
-const SALIAS={id:["sku","zeptoskuid","skuid","itemid","productid"],ean:["ean","barcode"],code:["dchicasku","dchicaskucode","vendorsku","skucode"],
+const SALIAS={internal:["dchicainternalsku","internalsku","dchicainternalcode"],transit:["stockintransitqty","intransitqty","stockintransit","intransit"],id:["sku","zeptoskuid","skuid","itemid","productid"],ean:["ean","barcode"],code:["dchicasku","dchicaskucode","vendorsku","skucode"],
   stock:["currentlivestockqty","livestockqty","livestock","stockqty","inventory","soh","closingstock","currentstock"],
   sold:["soldqty","unitssold","quantitysold","totalsoldqty"],s7:["soldlast7days","sold7days"],s30:["soldlast30days","sold30days"],
   date:["date","saledate","orderdate"],dq:["saleqty","qtysold","qty","units"],name:["productname","itemname","category","name"]};
-const MALIAS={id:["zeptoskuid","skuid","sku"],code:["dchicaskucode","dchicasku","skucode"],ean:["ean"],name:["productname","name"],cat:["category"],size:["size"],price:["transferprice","tp"]};
+const MALIAS={internal:["dchicainternalsku","internalsku","dchicainternalcode"],id:["zeptoskuid","skuid","sku"],code:["dchicaskucode","dchicasku","skucode"],ean:["ean"],name:["productname","name"],cat:["category"],size:["size"],price:["transferprice","tp"]};
 
 function findCols(hdr,alias){const nh=hdr.map(norm),m={};for(const [f,al] of Object.entries(alias)){for(const a of al){const i=nh.indexOf(a);if(i>=0){m[f]=i;break}}}return m}
 function bestHeader(arr,alias,must){let best=null;
@@ -244,9 +245,9 @@ async function uploadSales(f){
       for(const o of by.values()){const s=w=>o.days.filter(x=>(max-x.dt)/DAY<w).reduce((a,x)=>a+x.q,0);rows.push({id:o.id,stock:o.stock??0,s7:s(7),s14:s(14),s30:s(30),hasStock:o.stock!=null})}
       ST.sales={kind:"direct",asOf:max,rows,file:f.name};
     }else if(m.s30!=null||m.s7!=null){
-      for(let r=h.i+1;r<arr.length;r++){const row=arr[r]||[];const id=S(row[m.id??m.code??m.ean]);if(!id)continue;
-        rows.push({id,stock:num(row[m.stock]),s7:num(row[m.s7]),s30:num(row[m.s30]),s14:null,hasStock:m.stock!=null})}
-      ST.sales={kind:"direct",asOf:null,rows,file:f.name};
+      for(let r=h.i+1;r<arr.length;r++){const row=arr[r]||[];const g=k=>m[k]!=null?S(row[m[k]]):"";const id=g("id")||g("internal")||g("code")||g("ean");if(!id)continue;
+        rows.push({id,internal:g("internal"),code:g("code"),ean:g("ean"),stock:num(row[m.stock]),transit:m.transit!=null?num(row[m.transit]):null,s7:num(row[m.s7]),s30:num(row[m.s30]),s14:null,hasStock:m.stock!=null})}
+      ST.sales={kind:"direct",asOf:null,rows,file:f.name,hasTransit:m.transit!=null};
     }else{
       for(let r=h.i+1;r<arr.length;r++){const row=arr[r]||[];const id=S(row[m.id??m.code??m.ean]);if(!id||/total/i.test(id))continue;
         rows.push({id,stock:num(row[m.stock]),sold:num(row[m.sold])})}
@@ -262,8 +263,8 @@ async function uploadMaster(f){
   try{const wb=await readWb(f);const n=wb.SheetNames.find(x=>norm(x)==="skumaster")||wb.SheetNames[0];const arr=sheetArr(wb.Sheets[n]);
     const h=bestHeader(arr,MALIAS,["id","code"]);if(!h){ISSUES.push(`${f.name}: no Zepto SKU ID or D'Chica SKU Code column.`);compute();return}
     const m=h.m,rows=[];
-    for(let r=h.i+1;r<arr.length;r++){const row=arr[r]||[];const id=S(row[m.id]),code=S(row[m.code]);if(!id&&!code)continue;
-      rows.push({id,code,ean:S(row[m.ean]),name:[S(row[m.name]),S(row[m.size])].filter(Boolean).join(" ")||code||id.slice(0,8),cat:S(row[m.cat]),price:num(row[m.price])})}
+    for(let r=h.i+1;r<arr.length;r++){const row=arr[r]||[];const id=S(row[m.id]),code=S(row[m.code]),internal=m.internal!=null?S(row[m.internal]):"";if(!id&&!code&&!internal)continue;
+      rows.push({id:id||"",code:code||internal,internal,ean:S(row[m.ean]),name:[S(row[m.name]),S(row[m.size])].filter(Boolean).join(" ")||code||id.slice(0,8),cat:S(row[m.cat]),price:num(row[m.price])})}
     ST.master=masterFromRows(rows);ST.src.master="upload";$("s_ma").textContent=`${rows.length} SKUs loaded`;
   }catch(e){ISSUES.push(`${f.name}: could not be read (${e.message}).`)}
   compute();
@@ -275,7 +276,7 @@ function cfg(){return{rb:+$("rb").value,mx:num($("mx").value),mn:num($("mn").val
 
 function compute(){
   const C=cfg(),iss=[...ISSUES];
-  const idx=new Map();for(const m of ST.master.values()){for(const k of [m.id,m.ean,m.code])if(k)idx.set(norm(k),m.key)}
+  const idx=new Map();for(const m of ST.master.values()){for(const k of [m.id,m.ean,m.code,m.internal])if(k)idx.set(norm(k),m.key)}
   const resolve=(...ks)=>{for(const k of ks){if(k&&idx.has(norm(k)))return idx.get(norm(k))}return null};
   // SKUs
   const sku=new Map();const get=k=>{if(!sku.has(k)){const m=ST.master.get(k);sku.set(k,{key:k,m,name:m?m.name:k,cat:m?m.cat:"",price:m&&m.price?m.price*PRICE_FACTOR:0,tpSeen:0,stock:0,rate:0,hasSales:false,transit:0,lines:[]})}return sku.get(k)};
@@ -284,7 +285,7 @@ function compute(){
     if(sa.kind==="share"){const totSold=sa.rows.reduce((a,r)=>a+r.sold,0);
       let tr=null;if(sa.daily&&sa.daily.length){const w=sa.daily.slice(-C.rb);tr=w.reduce((a,x)=>a+x.u,0)/w.length}
       for(const r of sa.rows){const k=resolve(r.id)||r.id;const s=get(k);s.stock+=r.stock;s.hasSales=true;s.rate+=tr!=null?(totSold?tr*r.sold/totSold:0):r.sold/30}
-    }else{for(const r of sa.rows){const k=resolve(r.id)||r.id;const s=get(k);s.stock+=r.stock;s.hasSales=true;
+    }else{for(const r of sa.rows){const k=resolve(r.id,r.internal,r.code,r.ean)||r.id;const s=get(k);s.stock+=r.stock;s.hasSales=true;if(r.internal)s.internal=r.internal;if(r.transit!=null)s.sheetTransit=(s.sheetTransit||0)+r.transit;
       s.rate+=C.rb===7?r.s7/7:C.rb===14?(r.s14!=null?r.s14/14:(r.s7/7+r.s30/30)/2):r.s30/30}}
     for(const s of sku.values())totRate+=s.rate;
     const unk=[...sku.values()].filter(s=>!s.m&&s.hasSales).length;if(unk)iss.push(`${unk} SKUs in the sales sheet aren't in the SKU master. They're checked under their Zepto ID.`);
@@ -305,7 +306,9 @@ function compute(){
     p.units=p.lines.reduce((a,x)=>a+x.pend,0);p.value=p.lines.reduce((a,x)=>a+x.pend*(x.tp||x.s.price),0);
     if(p.status==="In Transit")p.lines.forEach(x=>x.s.transit+=x.pend);
   }
-  for(const s of sku.values()){if(!s.price&&s.tpSeen)s.price=s.tpSeen;if(s.tpSeen)s.price=s.tpSeen}
+  for(const s of sku.values()){if(!s.price&&s.tpSeen)s.price=s.tpSeen;if(s.tpSeen)s.price=s.tpSeen;if(!s.internal&&s.m&&s.m.internal)s.internal=s.m.internal}
+  if(sa&&sa.hasTransit){for(const s of sku.values())s.transit=s.sheetTransit||0;
+    if([...pos.values()].some(p=>p.status==="In Transit"))iss.push("Stock in transit is taken from the sales sheet's Stock In Transit Qty column. POs marked In Transit here aren't added on top, to avoid counting them twice.")}
   // sequential PO check
   const newPos=[...pos.values()].filter(p=>p.status==="New").sort((a,b)=>(a.date||0)-(b.date||0)||a.po.localeCompare(b.po));
   const run=new Map();for(const s of sku.values())run.set(s.key,s.stock+s.transit);
@@ -315,7 +318,7 @@ function compute(){
       else if(s.rate===0){x.st="nosale";x.cut=x.pend}
       else{x.cut=Math.min(x.pend,Math.max(0,Math.round(before+x.pend-lim)));x.st=x.cut?(x.cut===x.pend?"overall":"over"):"ok"}
       x.before=s.rate?before/s.rate:Infinity;x.after=s.rate?(before+x.pend)/s.rate:Infinity;
-      run.set(s.key,before+x.pend-x.cut);
+      run.set(s.key,before+x.pend-x.cut);s.newAcc=(s.newAcc||0)+x.pend-x.cut;
       if(x.cut){p.cut+=x.cut;p.cutV+=x.cut*(x.tp||s.price);p.flag++}
     }
     p.verdict=p.cut===0?(p.lines.some(x=>x.st==="nodata")?"check":"ok"):p.cut/p.units<0.15?"trim":"over";
@@ -375,12 +378,19 @@ function render(){
   const nb=al.filter(a=>a[0]==="bad").length;$("c_alert").textContent=nb||al.length;$("c_alert").className="ct"+(nb?" bad":"");
 
   // ---- SKU table
-  const rows=[...sku.values()].filter(s=>s.hasSales||s.transit||s.lines?.length).sort((a,b)=>((b.rate?(b.stock+b.transit)/b.rate:1e9)-(a.rate?(a.stock+a.transit)/a.rate:1e9)));
-  let sh=`<tr><th class="l">SKU</th><th class="l">Category</th><th>Live stock</th><th>In transit</th><th>Sold / day</th><th>Cover now</th><th>Cover incl. transit</th><th>Price used</th></tr>`;
-  for(const s of rows){const c1=s.rate?s.stock/s.rate:Infinity,c2=s.rate?(s.stock+s.transit)/s.rate:Infinity;
-    const cls=c2>C.mx?"cut":"";sh+=`<tr><td class="l">${s.name}</td><td class="l muted">${s.cat}</td><td>${N(s.stock)}</td><td>${N(s.transit)}</td><td>${s.rate.toFixed(1)}</td><td>${fdays(c1)}</td><td class="${cls}">${fdays(c2)}</td><td>${s.price?R(s.price):"–"}</td></tr>`}
-  const ts=rows.reduce((a,s)=>[a[0]+s.stock,a[1]+s.transit,a[2]+s.rate],[0,0,0]);
-  sh+=`<tr class="tot"><td class="l">Total</td><td></td><td>${N(ts[0])}</td><td>${N(ts[1])}</td><td>${ts[2].toFixed(1)}</td><td>${ts[2]?fdays(ts[0]/ts[2]):"–"}</td><td>${ts[2]?fdays((ts[0]+ts[1])/ts[2]):"–"}</td><td></td></tr>`;
+  const RO={need:["PO needed","p-bad",0],over:["Overstocked","p-warn",1],nosale:["Not selling","p-warn",2],ok:["Enough stock","p-ok",3],nodata:["No sales data","p-info",4]};
+  const rows=[...sku.values()].filter(s=>s.hasSales||s.transit).map(s=>{const pos2=s.stock+s.transit,acc=s.newAcc||0;
+    s.need=s.rate?Math.max(0,Math.round(s.rate*(C.tc+C.gl)-(pos2+acc))):0;
+    s.rs=!s.hasSales?"nodata":s.rate===0?(pos2>0?"nosale":"ok"):pos2/s.rate>C.mx?"over":s.need>0?"need":"ok";return s})
+    .sort((a,b)=>RO[a.rs][2]-RO[b.rs][2]||b.need-a.need||((a.rate?(a.stock+a.transit)/a.rate:1e9)-(b.rate?(b.stock+b.transit)/b.rate:1e9)));
+  const needS=rows.filter(s=>s.rs==="need"),needU=needS.reduce((a,s)=>a+s.need,0),needV=needS.reduce((a,s)=>a+s.need*s.price,0);
+  $("skusum").innerHTML=needS.length?`<b>${needS.length} SKUs need a PO now:</b> ${N(needU)} units, about ${L(needV)}. Suggested quantity brings each SKU to ${C.tc} days of cover plus ${C.gl} days of lead time, after live stock, stock in transit and accepted New POs.`:`No SKU needs a PO now. Every selling SKU has at least ${C.tc+C.gl} days of stock including transit and accepted New POs.`;
+  $("c_sku").textContent=needS.length;$("c_sku").className="ct"+(needS.length?" bad":"");
+  let sh=`<tr><th class="l">SKU</th><th class="l">Internal SKU</th><th>Live stock</th><th>In transit</th><th>New POs accepted</th><th>Sold / day</th><th>Cover incl. transit</th><th>Suggested PO</th><th>PO value</th><th class="l">Status</th></tr>`;
+  for(const s of rows){const c2=s.rate?(s.stock+s.transit)/s.rate:Infinity;const st=RO[s.rs];
+    sh+=`<tr><td class="l">${s.name}</td><td class="l muted">${s.internal||"–"}</td><td>${N(s.stock)}</td><td>${N(s.transit)}</td><td>${N(s.newAcc||0)}</td><td>${s.rate.toFixed(1)}</td><td>${fdays(c2)}</td><td class="${s.need?"cut":""}">${s.need?N(s.need):"–"}</td><td>${s.need?R(s.need*s.price):"–"}</td><td class="l"><span class="pill ${st[1]}">${st[0]}</span></td></tr>`}
+  const ts=rows.reduce((a,s)=>[a[0]+s.stock,a[1]+s.transit,a[2]+(s.newAcc||0),a[3]+s.rate],[0,0,0,0]);
+  sh+=`<tr class="tot"><td class="l">Total</td><td></td><td>${N(ts[0])}</td><td>${N(ts[1])}</td><td>${N(ts[2])}</td><td>${ts[3].toFixed(1)}</td><td>${ts[3]?fdays((ts[0]+ts[1])/ts[3]):"–"}</td><td>${N(needU)}</td><td>${L(needV)}</td><td></td></tr>`;
   $("tb_sku").innerHTML=sh;
 
   renderPay();
