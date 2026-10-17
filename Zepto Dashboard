@@ -1,0 +1,466 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Zepto PO Desk</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Familjen+Grotesk:wght@500;700&family=Source+Sans+3:wght@400;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+/* Layout: header + upload strip, then three tabs: PO check, Alerts, Payouts. Single column; wide tables scroll in their cards */
+:root{
+  --bg:#f6f7f5; --panel:#ffffff; --ink:#18201d; --muted:#5d6a64; --line:#dde3df;
+  --accent:#0f6b5c; --accent-soft:#d8ece7; --good:#1d7a3e; --warn:#a86500; --bad:#b3261e; --info:#2f5f9e;
+  --display:"Familjen Grotesk",system-ui,sans-serif; --body:"Source Sans 3",system-ui,sans-serif; --mono:"IBM Plex Mono",ui-monospace,monospace;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#111614; --panel:#18201d; --ink:#e7ece9; --muted:#9aa8a1; --line:#2c3632;
+  --accent:#5cc2ad; --accent-soft:#1e3a33; --good:#5bc27f; --warn:#e3a33c; --bad:#f07a6f; --info:#7fa8e0; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#111614; --panel:#18201d; --ink:#e7ece9; --muted:#9aa8a1; --line:#2c3632;
+  --accent:#5cc2ad; --accent-soft:#1e3a33; --good:#5bc27f; --warn:#e3a33c; --bad:#f07a6f; --info:#7fa8e0; color-scheme:dark}
+body{background:var(--bg);color:var(--ink);font-family:var(--body);font-size:15px;line-height:1.5;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:22px 48px}
+.wrap{max-width:1240px;margin:0 auto;display:flex;flex-direction:column;gap:16px}
+h1,h2,h3{font-family:var(--display);margin:0;text-wrap:balance}
+h1{font-size:1.8rem} h2{font-size:1.1rem} h3{font-size:.95rem}
+.sub{color:var(--muted);margin:2px 0 0;max-width:82ch}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:16px;display:flex;flex-direction:column;gap:12px;min-width:0}
+.ups{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
+@media (max-width:860px){.ups{grid-template-columns:minmax(0,1fr)}}
+.drop{border:2px dashed var(--line);border-radius:10px;padding:12px;display:flex;flex-direction:column;gap:6px;cursor:pointer;min-width:0}
+.drop.over{border-color:var(--accent);background:var(--accent-soft)}
+.drop b{font-family:var(--display);font-size:1rem}
+.drop small{color:var(--muted);font-size:.8rem;line-height:1.35}
+.drop .st{font-size:.8rem;color:var(--accent);font-weight:600}
+.btn{font:inherit;font-weight:600;font-size:.86rem;padding:6px 12px;border-radius:7px;border:1px solid var(--accent);background:transparent;color:var(--accent);cursor:pointer}
+.btn.solid{background:var(--accent);color:var(--panel)}
+.banner{border-radius:8px;padding:9px 13px;font-size:.88rem;background:color-mix(in srgb,var(--warn) 14%,transparent)}
+.banner.ok{background:var(--accent-soft)}
+.settings{display:flex;flex-wrap:wrap;gap:10px 18px;align-items:flex-end}
+.ctl{display:flex;flex-direction:column;gap:2px;font-size:.78rem;font-weight:600;color:var(--muted)}
+.ctl select,.ctl input{font:inherit;font-size:.9rem;font-weight:400;color:var(--ink);padding:4px 7px;border:1px solid var(--line);border-radius:6px;background:var(--panel)}
+.ctl input[type=number]{width:72px}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.tabs{display:flex;gap:4px;border-bottom:1px solid var(--line);flex-wrap:wrap}
+.tabs button{font:inherit;font-weight:600;padding:8px 14px;border:0;border-bottom:3px solid transparent;background:transparent;color:var(--muted);cursor:pointer}
+.tabs button[aria-selected=true]{color:var(--ink);border-bottom-color:var(--accent)}
+.tabs .ct{font-family:var(--mono);font-size:.75rem;margin-left:6px;padding:0 6px;border-radius:99px;background:var(--line);color:var(--ink)}
+.tabs .ct.bad{background:var(--bad);color:var(--panel)}
+.kpis{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px}
+@media (max-width:760px){.kpis{grid-template-columns:repeat(2,minmax(0,1fr))}}
+.kpi{border:1px solid var(--line);border-radius:10px;padding:11px;display:flex;flex-direction:column;gap:1px;min-width:0;background:var(--panel)}
+.kpi .l{font-size:.7rem;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);font-weight:600}
+.kpi .v{font-family:var(--mono);font-size:1.3rem;font-variant-numeric:tabular-nums}
+.kpi .n{font-size:.77rem;color:var(--muted)}
+.kpi.hl{border-color:var(--accent);background:var(--accent-soft)}
+.tbl{overflow-x:auto}
+table{border-collapse:collapse;width:100%;font-size:.85rem}
+th,td{padding:6px 8px;text-align:right;border-bottom:1px solid var(--line);white-space:nowrap;vertical-align:top}
+th{font-size:.68rem;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);font-weight:600}
+.l{text-align:left}
+td{font-family:var(--mono);font-variant-numeric:tabular-nums}
+td.l{font-family:var(--body)}
+td.cut{color:var(--bad);font-weight:600}
+tr.po td{background:color-mix(in srgb,var(--accent) 6%,transparent);border-top:2px solid var(--line)}
+tr.tot td{font-weight:600;border-top:2px solid var(--ink)}
+td select,td input{font:inherit;font-size:.82rem;padding:2px 5px;border:1px solid var(--line);border-radius:5px;background:var(--panel);color:var(--ink)}
+.pill{display:inline-block;padding:1px 8px;border-radius:99px;font-size:.74rem;font-weight:600;font-family:var(--body)}
+.p-bad{background:color-mix(in srgb,var(--bad) 15%,transparent);color:var(--bad)}
+.p-warn{background:color-mix(in srgb,var(--warn) 18%,transparent);color:var(--warn)}
+.p-ok{background:color-mix(in srgb,var(--good) 15%,transparent);color:var(--good)}
+.p-info{background:color-mix(in srgb,var(--info) 15%,transparent);color:var(--info)}
+.alerts{display:flex;flex-direction:column;gap:8px;margin:0;padding:0;list-style:none}
+.alerts li{display:grid;grid-template-columns:7.5rem minmax(0,1fr);gap:10px;align-items:baseline;padding:8px 10px;border:1px solid var(--line);border-radius:8px}
+@media (max-width:560px){.alerts li{grid-template-columns:minmax(0,1fr)}}
+.muted{color:var(--muted)}
+.row{display:flex;justify-content:space-between;align-items:baseline;gap:10px;flex-wrap:wrap}
+ul.notes{margin:0;padding-left:18px;font-size:.85rem;color:var(--muted);display:flex;flex-direction:column;gap:3px}
+details summary{cursor:pointer;font-weight:600;font-size:.88rem}
+</style>
+<style>*,*::before,*::after{box-sizing:border-box}[hidden]{display:none!important}body{margin:0}</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>Zepto PO Desk</h1>
+    <p class="sub">Upload Zepto PO exports and the Zepto SKU-wise sales and inventory sheet. Each New PO is checked in date order against live stock, POs already in transit and the sales rate. The Payouts tab estimates what moves in a month: Zepto to reseller, and reseller to D'Chica.</p>
+  </header>
+
+  <section class="card" aria-label="Uploads">
+    <div class="ups">
+      <label class="drop" id="d_po" for="f_po"><b>Zepto PO files</b><small>The PO export as Zepto sends it (PO No., PO Date, Del Location, EAN, Dchica Sku, Qty, TP). Several files at once is fine; re-uploading a PO replaces it.</small><span class="st" id="s_po"></span><input type="file" id="f_po" accept=".xlsx,.xls,.csv" multiple hidden></label>
+      <label class="drop" id="d_sa" for="f_sa"><b>Zepto SKU-wise sales sheet</b><small>Sales and live stock by SKU. Works with Zepto's Sale &amp; Inventory sheet (SKU, Sold Qty, Current Live Stock Qty, plus date-wise sales), daily SKU rows, or Sold Last 7 / 30 Days columns.</small><span class="st" id="s_sa"></span><input type="file" id="f_sa" accept=".xlsx,.xls,.csv" hidden></label>
+      <label class="drop" id="d_ma" for="f_ma"><b>SKU master (optional)</b><small>The template's SKU_Master tab, linking Zepto SKU IDs to EAN and D'Chica SKU codes. A built-in master with the 29 current SKUs is used until you upload one.</small><span class="st" id="s_ma"></span><input type="file" id="f_ma" accept=".xlsx,.xls" hidden></label>
+    </div>
+    <div class="banner" id="banner"></div>
+    <div class="settings">
+      <div class="ctl"><label for="rb">Sales rate from</label><select id="rb"><option value="30">Last 30 days</option><option value="14">Last 14 days</option><option value="7">Last 7 days</option></select></div>
+      <div class="ctl"><label for="mx">Overstock above (days)</label><input type="number" id="mx" value="60" min="10" max="365"></div>
+      <div class="ctl"><label for="mn">Running low below (days)</label><input type="number" id="mn" value="20" min="0" max="120"></div>
+      <div class="ctl"><label for="tc">Zepto target cover (days)</label><input type="number" id="tc" value="45" min="10" max="120"></div>
+      <div class="ctl"><label for="gl">PO → GRN (days)</label><input type="number" id="gl" value="10" min="0" max="30"></div>
+      <div class="ctl"><label for="zt">GRN → Zepto pays (days)</label><input type="number" id="zt" value="30" min="0" max="90"></div>
+      <div class="ctl"><label for="pl">PO → reseller pays D'Chica (days)</label><input type="number" id="pl" value="8" min="0" max="30"></div>
+      <div class="ctl"><label for="mg">Reseller margin %</label><input type="number" id="mg" value="16" min="0" max="40" step="0.5"></div>
+      <div class="ctl"><label for="dd">Zepto deductions %</label><input type="number" id="dd" value="2" min="0" max="20" step="0.5"></div>
+      <button class="btn" type="button" id="reset">Load example</button>
+    </div>
+  </section>
+
+  <nav class="tabs" role="tablist" aria-label="Views">
+    <button role="tab" id="t_check" aria-selected="true" aria-controls="v_check">PO check<span class="ct" id="c_check"></span></button>
+    <button role="tab" id="t_alert" aria-selected="false" aria-controls="v_alert">Overstock alerts<span class="ct" id="c_alert"></span></button>
+    <button role="tab" id="t_pay" aria-selected="false" aria-controls="v_pay">Payouts</button>
+    <button role="tab" id="t_sku" aria-selected="false" aria-controls="v_sku">SKU stock</button>
+  </nav>
+
+  <section id="v_check" role="tabpanel" aria-labelledby="t_check" class="card">
+    <div class="row"><h2>Does each PO overstock?</h2><button class="btn" type="button" id="copy">Copy cut list</button></div>
+    <p class="muted" style="font-size:.85rem;margin:0" id="checknote">New POs are checked oldest first. Each one sees live stock, every Open and In Transit PO, and the accepted part of earlier New POs. A line is cut where it takes the SKU past the overstock limit. Set a PO's status in the table: once it's In Transit, later POs are checked against it.</p>
+    <div class="kpis" id="k_check"></div>
+    <div class="tbl"><table id="tb_check"></table></div>
+  </section>
+
+  <section id="v_alert" role="tabpanel" aria-labelledby="t_alert" class="card" hidden>
+    <h2>Overstock and stock alerts</h2>
+    <ul class="alerts" id="alerts"></ul>
+  </section>
+
+  <section id="v_pay" role="tabpanel" aria-labelledby="t_pay" class="card" hidden>
+    <div class="row"><h2>Reseller payout estimate</h2>
+      <div class="settings"><div class="ctl"><label for="pm">Month</label><select id="pm"></select></div>
+      <div class="ctl"><label for="ex">Expected POs</label><select id="ex"><option value="1">Include forecast POs</option><option value="0">Only POs in hand</option></select></div></div></div>
+    <div class="kpis" id="k_pay"></div>
+    <div class="tbl"><table id="tb_pay"></table></div>
+    <ul class="notes" id="paynotes"></ul>
+  </section>
+
+  <section id="v_sku" role="tabpanel" aria-labelledby="t_sku" class="card" hidden>
+    <h2>Stock position by SKU</h2>
+    <div class="tbl"><table id="tb_sku"></table></div>
+  </section>
+
+  <section class="card" aria-labelledby="h_iss"><details id="issbox"><summary id="h_iss">Data checks</summary><ul class="notes" id="issues" style="margin-top:8px"></ul></details></section>
+</div>
+
+<script>
+const SAMPLE={"master":[["1944b527-d6b8-4c8d-8b25-84405d51eb65","Bra Strap 1944","Bra Strap",185.38,"8907681639760","DCZPRSBS10270"],["21e75e01-eb72-412e-9420-8768448f6e6d","White Tube Bra Non-Padded L","Tube Bra",240.56,"8907681639845","DCZPRSWNBR10274/L"],["462ca155-0585-404a-8cb0-8ae8ceeb5cdc","Black Tube Bra Padded XL","Tube Bra",221.96,"8907681640094","DCZPRSWNBR10283/XL"],["70b1d2fe-2d54-4ca5-b19e-1087bd8322ba","White Tube Bra Non-Padded M","Tube Bra",240.56,"8907681639838","DCZPRSWNBR10274/M"],["82ad496c-020d-4d3a-a446-3d056f565ebe","Black Tube Bra Padded L","Tube Bra",221.96,"8907681640087","DCZPRSWNBR10283/L"],["a7d9f9e7-865a-4a7e-8883-6478c240d951","Black Tube Bra Padded M","Tube Bra",221.96,"8907681640070","DCZPRSWNBR10283/M"],["cd1ad953-65df-483b-80df-e091a8b07e18","Black Tube Bra Padded S","Tube Bra",221.96,"8907681640063","DCZPRSWNBR10283/S"],["e1a034dd-25a9-457e-aa9c-74fca25f8d87","White Tube Bra Non-Padded Free Size","Tube Bra",240.56,"8907681639821","DCZPRSWNBR10274/S"],["0a549a92-9bab-4101-b7ac-f2498dd143ca","Stockings 0a54","Stockings",185.38,"",""],["616a94ed-eeeb-444f-b108-9f07745ffa9c","Bra Pads 616a","Bra Pads",123.38,"",""],["6d8e5604-9c19-412b-ac85-7278e742c3c8","Bra Pads 6d8e","Bra Pads",123.38,"",""],["8821fb10-d93b-4bfc-9fb5-1e088b79c5b5","Stockings 8821","Stockings",185.38,"",""],["32b890aa-7e43-427e-a666-cd0cc20179a4","Seamless Panty (est.) 32b8","Seamless Panty",176.7,"",""],["66af5520-56aa-468c-adae-682f96170885","Seamless Panty (est.) 66af","Seamless Panty",176.7,"",""],["673e98ec-cd08-4f1f-b054-dba4abfe7b2a","Seamless Panty (est.) 673e","Seamless Panty",176.7,"",""],["67f22d32-7289-4ea6-9288-aa12ceb0375b","Bra Strap 67f2","Bra Strap",309.38,"",""],["70bc279c-7b43-4093-921a-80f0fae95bab","Seamless Panty (est.) 70bc","Seamless Panty",176.7,"",""],["8d23a0b8-8d4b-410c-a448-85282bda800b","Bra Strap 8d23","Bra Strap",309.38,"",""],["b81d4e2b-f045-4c3b-8186-b63a0c579644","Seamless Panty (est.) b81d","Seamless Panty",176.7,"",""],["0b2768b9-e20c-4605-b4d6-4a42f15149dd","Seamless Panty (restarted) 0b27","Seamless Panty",241.8,"",""],["2533f3bd-11f7-4551-8076-63e982acdf59","Seamless Panty (restarted) 2533","Seamless Panty",433.38,"",""],["3ef888be-3d24-447d-8bdb-26620ecefc49","Seamless Panty (restarted) 3ef8","Seamless Panty",139.5,"",""],["63bab42d-a52d-4814-82cf-d923f4aa096a","Seamless Panty (restarted) 63ba","Seamless Panty",241.8,"",""],["8a8fcf90-d0fa-4d93-8108-64a4db55194f","Seamless Panty (restarted) 8a8f","Seamless Panty",241.8,"",""],["9b2fcbb6-a0c6-4f72-b4c3-de3e3e847e47","Seamless Panty (restarted) 9b2f","Seamless Panty",241.8,"",""],["a7eeb244-7c4c-499a-b47d-7fd7d7a8e3b7","Seamless Panty (restarted) a7ee","Seamless Panty",241.8,"",""],["a81559b5-436a-4a5e-a4c1-0d27f19ffa43","Seamless Panty (restarted) a815","Seamless Panty",241.8,"",""],["ddfc593e-5042-41da-85de-2a8c3a0ba2c8","Seamless Panty (restarted) ddfc","Seamless Panty",433.38,"",""],["f064a561-48c3-403d-9baf-ac33da52afb4","Seamless Panty (restarted) f064","Seamless Panty",241.8,"",""],["","Seamless Panty S","Seamless Panty",176.7,"8907681640407","DCZPWNSPN10289/S"],["","Seamless Panty M","Seamless Panty",176.7,"8907681640414","DCZPWNSPN10289/M"],["","Seamless Panty L","Seamless Panty",176.7,"8907681640421","DCZPWNSPN10289/L"],["","Seamless Panty XL","Seamless Panty",176.7,"8907681640438","DCZPWNSPN10289/XL"],["","Seamless Panty XXL","Seamless Panty",176.7,"8907681640445","DCZPWNSPN10289/XXL"]],"sales":[["1944b527-d6b8-4c8d-8b25-84405d51eb65",289,500],["21e75e01-eb72-412e-9420-8768448f6e6d",280,1080],["462ca155-0585-404a-8cb0-8ae8ceeb5cdc",307,2865],["70b1d2fe-2d54-4ca5-b19e-1087bd8322ba",285,1157],["82ad496c-020d-4d3a-a446-3d056f565ebe",295,2418],["a7d9f9e7-865a-4a7e-8883-6478c240d951",335,2721],["cd1ad953-65df-483b-80df-e091a8b07e18",576,3702],["e1a034dd-25a9-457e-aa9c-74fca25f8d87",376,1190],["0a549a92-9bab-4101-b7ac-f2498dd143ca",54,216],["616a94ed-eeeb-444f-b108-9f07745ffa9c",0,145],["6d8e5604-9c19-412b-ac85-7278e742c3c8",0,163],["8821fb10-d93b-4bfc-9fb5-1e088b79c5b5",42,522],["32b890aa-7e43-427e-a666-cd0cc20179a4",213,533],["66af5520-56aa-468c-adae-682f96170885",149,775],["673e98ec-cd08-4f1f-b054-dba4abfe7b2a",266,781],["67f22d32-7289-4ea6-9288-aa12ceb0375b",17,123],["70bc279c-7b43-4093-921a-80f0fae95bab",220,668],["8d23a0b8-8d4b-410c-a448-85282bda800b",21,222],["b81d4e2b-f045-4c3b-8186-b63a0c579644",295,524],["0b2768b9-e20c-4605-b4d6-4a42f15149dd",89,8],["2533f3bd-11f7-4551-8076-63e982acdf59",277,1],["3ef888be-3d24-447d-8bdb-26620ecefc49",150,48],["63bab42d-a52d-4814-82cf-d923f4aa096a",273,5],["8a8fcf90-d0fa-4d93-8108-64a4db55194f",95,2],["9b2fcbb6-a0c6-4f72-b4c3-de3e3e847e47",126,13],["a7eeb244-7c4c-499a-b47d-7fd7d7a8e3b7",269,9],["a81559b5-436a-4a5e-a4c1-0d27f19ffa43",211,1],["ddfc593e-5042-41da-85de-2a8c3a0ba2c8",278,0],["f064a561-48c3-403d-9baf-ac33da52afb4",269,9]],"daily":[["2026-01-20",18],["2026-01-21",29],["2026-01-22",46],["2026-01-23",41],["2026-01-24",53],["2026-01-25",43],["2026-01-26",29],["2026-01-27",29],["2026-01-28",25],["2026-01-29",31],["2026-01-30",41],["2026-01-31",64],["2026-02-01",55],["2026-02-02",27],["2026-02-03",27],["2026-02-04",38],["2026-02-05",40],["2026-02-06",58],["2026-02-07",60],["2026-02-08",51],["2026-02-09",36],["2026-02-10",28],["2026-02-11",39],["2026-02-12",33],["2026-02-13",44],["2026-02-14",48],["2026-02-15",21],["2026-02-16",4],["2026-02-17",14],["2026-02-18",17],["2026-02-19",12],["2026-02-20",30],["2026-02-21",26],["2026-02-22",27],["2026-02-23",10],["2026-02-24",17],["2026-02-25",17],["2026-02-26",35],["2026-02-27",27],["2026-02-28",48],["2026-03-01",46],["2026-03-02",40],["2026-03-03",51],["2026-03-04",47],["2026-03-05",56],["2026-03-06",52],["2026-03-07",110],["2026-03-08",93],["2026-03-09",64],["2026-03-10",66],["2026-03-11",76],["2026-03-12",102],["2026-03-13",124],["2026-03-14",123],["2026-03-15",93],["2026-03-16",52],["2026-03-17",65],["2026-03-18",59],["2026-03-19",58],["2026-03-20",62],["2026-03-21",50],["2026-03-22",50],["2026-03-23",31],["2026-03-24",42],["2026-03-25",55],["2026-03-26",50],["2026-03-27",77],["2026-03-28",73],["2026-03-29",54],["2026-03-30",37],["2026-03-31",43],["2026-04-01",61],["2026-04-02",61],["2026-04-03",70],["2026-04-04",85],["2026-04-05",60],["2026-04-06",36],["2026-04-07",40],["2026-04-08",42],["2026-04-09",55],["2026-04-10",80],["2026-04-11",96],["2026-04-12",48],["2026-04-13",34],["2026-04-14",41],["2026-04-15",37],["2026-04-16",37],["2026-04-17",68],["2026-04-18",82],["2026-04-19",71],["2026-04-20",42],["2026-04-21",39],["2026-04-22",42],["2026-04-23",42],["2026-04-24",65],["2026-04-25",111],["2026-04-26",86],["2026-04-27",47],["2026-04-28",54],["2026-04-29",67],["2026-04-30",103],["2026-05-01",116],["2026-05-02",129],["2026-05-03",91],["2026-05-04",54],["2026-05-05",66],["2026-05-06",74],["2026-05-07",101],["2026-05-08",151],["2026-05-09",144],["2026-05-10",110],["2026-05-11",73],["2026-05-12",70],["2026-05-13",59],["2026-05-14",69],["2026-05-15",82],["2026-05-16",85],["2026-05-17",59],["2026-05-18",37],["2026-05-19",32],["2026-05-20",40],["2026-05-21",43],["2026-05-22",76],["2026-05-23",59],["2026-05-24",48],["2026-05-25",35],["2026-05-26",31],["2026-05-27",56],["2026-05-28",53],["2026-05-29",75],["2026-05-30",80],["2026-05-31",91],["2026-06-01",46],["2026-06-02",44],["2026-06-03",35],["2026-06-04",49],["2026-06-05",74],["2026-06-06",91],["2026-06-07",94],["2026-06-08",44],["2026-06-09",39],["2026-06-10",70],["2026-06-11",91],["2026-06-12",116],["2026-06-13",98],["2026-06-14",76],["2026-06-15",60],["2026-06-16",49],["2026-06-17",68],["2026-06-18",80],["2026-06-19",134],["2026-06-20",113],["2026-06-21",96],["2026-06-22",63],["2026-06-23",67],["2026-06-24",80],["2026-06-25",111],["2026-06-26",112],["2026-06-27",109],["2026-06-28",87],["2026-06-29",60],["2026-06-30",67],["2026-07-01",63],["2026-07-02",70],["2026-07-03",103],["2026-07-04",112],["2026-07-05",94],["2026-07-06",60],["2026-07-07",48],["2026-07-08",66],["2026-07-09",74],["2026-07-10",93],["2026-07-11",88],["2026-07-12",64],["2026-07-13",36],["2026-07-14",47],["2026-07-15",59],["2026-07-16",70],["2026-07-17",70],["2026-07-18",100],["2026-07-19",67],["2026-07-20",44],["2026-07-21",55],["2026-07-22",72],["2026-07-23",88],["2026-07-24",89],["2026-07-25",78],["2026-07-26",52],["2026-07-27",43],["2026-07-28",52],["2026-07-29",56],["2026-07-30",77],["2026-07-31",103],["2026-08-01",110],["2026-08-02",85],["2026-08-03",36],["2026-08-04",59],["2026-08-05",73],["2026-08-06",89],["2026-08-07",143],["2026-08-08",134],["2026-08-09",95],["2026-08-10",70],["2026-08-11",58],["2026-08-12",88],["2026-08-13",113],["2026-08-14",140],["2026-08-15",132],["2026-08-16",73],["2026-08-17",72],["2026-08-18",67],["2026-08-19",80],["2026-08-20",101],["2026-08-21",104],["2026-08-22",115],["2026-08-23",92],["2026-08-24",49],["2026-08-25",65],["2026-08-26",84],["2026-08-27",105],["2026-08-28",121],["2026-08-29",101],["2026-08-30",86],["2026-08-31",78],["2026-09-01",77],["2026-09-02",101],["2026-09-03",91],["2026-09-04",117],["2026-09-05",144],["2026-09-06",118],["2026-09-07",78],["2026-09-08",65],["2026-09-09",96],["2026-09-10",132],["2026-09-11",169],["2026-09-12",162],["2026-09-13",149],["2026-09-14",133],["2026-09-15",74],["2026-09-16",116],["2026-09-17",109],["2026-09-18",137],["2026-09-19",185],["2026-09-20",127],["2026-09-21",77],["2026-09-22",95],["2026-09-23",105],["2026-09-24",127],["2026-09-25",159],["2026-09-26",162],["2026-09-27",129],["2026-09-28",83],["2026-09-29",96],["2026-09-30",141],["2026-10-01",200],["2026-10-02",160],["2026-10-03",160],["2026-10-04",133],["2026-10-05",88],["2026-10-06",77],["2026-10-07",72],["2026-10-08",117],["2026-10-09",175],["2026-10-10",192],["2026-10-11",164],["2026-10-12",254],["2026-10-13",127],["2026-10-14",164]],"pos":[["P5763071","2026-10-05","GUR-SS-MH-FARUKHNAGAR","8907681639760","DCZPRSBS10270",3,169.5108],["P5763071","2026-10-05","GUR-SS-MH-FARUKHNAGAR","8907681640414","DCZPWNSPN10289/M",17,156.4866],["P5763071","2026-10-05","GUR-SS-MH-FARUKHNAGAR","8907681639838","DCZPRSWNBR10274/m",31,211.413],["P5763071","2026-10-05","GUR-SS-MH-FARUKHNAGAR","8907681640087","DCZPRSWNBR10283/L",105,211.413],["P5763071","2026-10-05","GUR-SS-MH-FARUKHNAGAR","8907681640070","DCZPRSWNBR10283/M",44,211.413],["P5763547","2026-10-05","MUM-SS-MH-SHAKTI","8907681639760","DCZPRSBS10270",2,169.5108],["P5763547","2026-10-05","MUM-SS-MH-SHAKTI","8907681639845","DCZPRSWNBR10274/l",29,211.413],["P5763547","2026-10-05","MUM-SS-MH-SHAKTI","8907681640407","DCZPWNSPN10289/S",6,156.4866],["P5763547","2026-10-05","MUM-SS-MH-SHAKTI","8907681640094","DCZPRSWNBR10283/XL",86,211.413],["P5763547","2026-10-05","MUM-SS-MH-SHAKTI","8907681640414","DCZPWNSPN10289/M",83,156.4866],["P5763547","2026-10-05","MUM-SS-MH-SHAKTI","8907681640087","DCZPRSWNBR10283/L",13,211.413],["P5763547","2026-10-05","MUM-SS-MH-SHAKTI","8907681640070","DCZPRSWNBR10283/M",16,211.413],["P5763547","2026-10-05","MUM-SS-MH-SHAKTI","8907681640063","DCZPRSWNBR10283/S",101,211.413],["P5764662","2026-10-05","BLR-SS-MH-SUMADHURA","8907681639760","DCZPRSBS10270",23,169.5108],["P5764662","2026-10-05","BLR-SS-MH-SUMADHURA","8907681639845","DCZPRSWNBR10274/l",14,211.413],["P5764662","2026-10-05","BLR-SS-MH-SUMADHURA","8907681640407","DCZPWNSPN10289/S",33,156.4866],["P5764662","2026-10-05","BLR-SS-MH-SUMADHURA","8907681640094","DCZPRSWNBR10283/XL",30,211.413],["P5764662","2026-10-05","BLR-SS-MH-SUMADHURA","8907681640421","DCZPWNSPN10289/L",1,156.4866],["P5764662","2026-10-05","BLR-SS-MH-SUMADHURA","8907681639838","DCZPRSWNBR10274/m",4,211.413],["P5764662","2026-10-05","BLR-SS-MH-SUMADHURA","8907681640438","DCZPWNSPN10289/XL",17,156.4866],["P5764662","2026-10-05","BLR-SS-MH-SUMADHURA","8907681640087","DCZPRSWNBR10283/L",59,211.413],["P5764662","2026-10-05","BLR-SS-MH-SUMADHURA","8907681640070","DCZPRSWNBR10283/M",66,211.413],["P5764662","2026-10-05","BLR-SS-MH-SUMADHURA","8907681640063","DCZPRSWNBR10283/S",192,211.413],["P5765469","2026-10-05","CHN-SS-MH-THIRUVALLUR","8907681640438","DCZPWNSPN10289/XL",4,156.4866],["P5765469","2026-10-05","CHN-SS-MH-THIRUVALLUR","8907681640070","DCZPRSWNBR10283/M",27,211.413],["P5765469","2026-10-05","CHN-SS-MH-THIRUVALLUR","8907681640445","DCZPWNSPN10289/XXL",16,156.4866],["P5765469","2026-10-05","CHN-SS-MH-THIRUVALLUR","8907681640063","DCZPRSWNBR10283/S",181,211.413],["P5765469","2026-10-05","CHN-SS-MH-THIRUVALLUR","8907681639821","DCZPRSWNBR10274/s",28,211.413],["P5765469","2026-10-05","CHN-SS-MH-THIRUVALLUR","8907681639760","DCZPRSBS10270",12,169.5108],["P5765469","2026-10-05","CHN-SS-MH-THIRUVALLUR","8907681639845","DCZPRSWNBR10274/l",15,211.413],["P5765469","2026-10-05","CHN-SS-MH-THIRUVALLUR","8907681640094","DCZPRSWNBR10283/XL",19,211.413],["P5765469","2026-10-05","CHN-SS-MH-THIRUVALLUR","8907681640414","DCZPWNSPN10289/M",10,156.4866],["P5765469","2026-10-05","CHN-SS-MH-THIRUVALLUR","8907681639838","DCZPRSWNBR10274/m",41,211.413]],"meta":{"P5763071":{"ask":"2026-10-26","pay":"2026-10-13"},"P5763547":{"ask":"2026-10-26","pay":"2026-10-13"},"P5764662":{"ask":"2026-10-26","pay":"2026-10-13"},"P5765469":{"ask":"2026-10-26","pay":"2026-10-13"}}};
+const $=id=>document.getElementById(id);
+const norm=s=>String(s??"").toLowerCase().replace(/[^a-z0-9]/g,"");
+const num=v=>{if(v==null||v==="")return 0;const n=+String(v).replace(/[,₹\s]/g,"");return isFinite(n)?n:0};
+const S=v=>String(v??"").trim();
+const N=x=>Math.round(x).toLocaleString("en-IN");
+const L=x=>"₹"+(x/1e5).toFixed(2)+"L";
+const R=x=>"₹"+Math.round(x).toLocaleString("en-IN");
+const DAY=864e5;
+const d0=d=>{const x=new Date(d);x.setHours(0,0,0,0);return x};
+const fd=d=>d?d.toLocaleDateString("en-IN",{day:"2-digit",month:"short"}):"–";
+const iso=d=>d?`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`:"";
+const toDate=v=>{if(v instanceof Date){if(isNaN(v))return null;const t=new Date(v.getTime()+12*3600e3);return new Date(t.getUTCFullYear(),t.getUTCMonth(),t.getUTCDate())}if(typeof v==="number"&&v>20000&&v<80000)return d0(new Date(Math.round((v-25569)*DAY)));const s=S(v);if(!s)return null;let y4=s.match(/^(\d{4})-(\d{2})-(\d{2})/);if(y4)return new Date(+y4[1],+y4[2]-1,+y4[3]);
+  let m=s.match(/^(\d{1,2})[-\/.](\d{1,2})[-\/.](\d{2,4})/);if(m){const y=+m[3]<100?2000+ +m[3]:+m[3];return d0(new Date(y,+m[2]-1,+m[1]))}
+  const t=Date.parse(s);return isFinite(t)?d0(new Date(t)):null};
+const PRICE_FACTOR=0.934;
+
+// ---------- state ----------
+let ST={master:null,sales:null,pos:new Map(),meta:{},src:{}};
+let UI={};try{UI=JSON.parse(localStorage.getItem("zeptoPoDesk")||"{}")}catch(e){}
+UI.status=UI.status||{};UI.grn=UI.grn||{};
+const saveUI=()=>{try{localStorage.setItem("zeptoPoDesk",JSON.stringify(UI))}catch(e){}};
+let ISSUES=[];
+
+function masterFromRows(rows){const m=new Map();for(const r of rows){const key=r.id||r.code;if(!key)continue;m.set(key,{...r,key})}return m}
+function loadSample(){
+  ST.master=masterFromRows(SAMPLE.master.map(([id,name,cat,price,ean,code])=>({id,name,cat,price,ean,code})));
+  const dl=SAMPLE.daily.map(([d,u])=>({date:toDate(d),u}));
+  ST.sales={kind:"share",asOf:dl[dl.length-1].date,rows:SAMPLE.sales.map(([id,stock,sold])=>({id,stock,sold})),daily:dl,file:"Example: Zepto sale & inventory, 20 Jan–14 Oct 2026"};
+  ST.pos=new Map();
+  for(const [po,date,city,ean,code,qty,tp] of SAMPLE.pos){addPoLine({po,date:toDate(date),city,ean,code,id:"",qty,grnQty:0,tp,status:null,file:"Example: 5 Oct POs"})}
+  ST.meta={};for(const [po,m] of Object.entries(SAMPLE.meta))ST.meta[po]={ask:toDate(m.ask),pay:toDate(m.pay)};
+  ST.src={po:"example",sales:"example",master:"built-in"};
+}
+function addPoLine(l){const k=l.po+"|"+(l.id||l.ean||l.code)+"|"+l.city;ST.pos.set(k,l)}
+
+// ---------- parsing ----------
+const ALIAS={
+  po:["pono","ponumber","po","purchaseorderno","purchaseorder"],date:["podate","date","createdat","orderdate"],city:["dellocation","deliverylocation","citywarehouse","warehouse","city","location"],
+  ean:["ean","barcode","eancode"],code:["dchicasku","dchicaskucode","vendorsku","skucode","sellersku"],id:["zeptoskuid","skuid","zeptosku"],
+  qty:["qty","poqty","orderedqty","quantity"],tp:["tp","landingprice","unitprice","price"],status:["postatus","status"],grn:["grnqty","receivedqty"],
+  ask:["askdate","expirydate","deliverydate"],pay:["paymentdate"],
+};
+const SALIAS={id:["sku","zeptoskuid","skuid","itemid","productid"],ean:["ean","barcode"],code:["dchicasku","dchicaskucode","vendorsku","skucode"],
+  stock:["currentlivestockqty","livestockqty","livestock","stockqty","inventory","soh","closingstock","currentstock"],
+  sold:["soldqty","unitssold","quantitysold","totalsoldqty"],s7:["soldlast7days","sold7days"],s30:["soldlast30days","sold30days"],
+  date:["date","saledate","orderdate"],dq:["saleqty","qtysold","qty","units"],name:["productname","itemname","category","name"]};
+const MALIAS={id:["zeptoskuid","skuid","sku"],code:["dchicaskucode","dchicasku","skucode"],ean:["ean"],name:["productname","name"],cat:["category"],size:["size"],price:["transferprice","tp"]};
+
+function findCols(hdr,alias){const nh=hdr.map(norm),m={};for(const [f,al] of Object.entries(alias)){for(const a of al){const i=nh.indexOf(a);if(i>=0){m[f]=i;break}}}return m}
+function bestHeader(arr,alias,must){let best=null;
+  for(let i=0;i<Math.min(arr.length,20);i++){const row=arr[i]||[];const m=findCols(row,alias);const score=Object.keys(m).length;
+    if(must.some(f=>m[f]!=null)&&(!best||score>best.score))best={i,m,score}}return best}
+const sheetArr=ws=>XLSX.utils.sheet_to_json(ws,{header:1,defval:null,raw:true});
+
+async function readWb(f){return XLSX.read(await f.arrayBuffer(),{type:"array",cellDates:true})}
+
+async function uploadPOs(files){
+  if(ST.src.po==="example"){ST.pos=new Map();ST.meta={}}
+  let lines=0,pos=new Set();
+  for(const f of files){try{const wb=await readWb(f);
+    for(const n of wb.SheetNames){const arr=sheetArr(wb.Sheets[n]);
+      const h=bestHeader(arr,ALIAS,["po"]);if(!h)continue;const m=h.m;
+      const hasSku=m.ean!=null||m.code!=null||m.id!=null;
+      for(let r=h.i+1;r<arr.length;r++){const row=arr[r]||[];const po=S(row[m.po]);if(!po||/^example/i.test(po))continue;
+        if(!hasSku){ // summary sheet: capture ask / payment dates
+          ST.meta[po]={...(ST.meta[po]||{}),ask:m.ask!=null?toDate(row[m.ask]):ST.meta[po]?.ask,pay:m.pay!=null?toDate(row[m.pay]):ST.meta[po]?.pay};continue}
+        const ean=m.ean!=null?S(row[m.ean]):"",code=m.code!=null?S(row[m.code]):"",id=m.id!=null?S(row[m.id]):"";if(!ean&&!code&&!id)continue;
+        const st=m.status!=null?({new:"New",open:"In Transit",intransit:"In Transit",transit:"In Transit",received:"Received",cancelled:"Cancelled",canceled:"Cancelled"})[norm(row[m.status])]:null;
+        addPoLine({po,date:m.date!=null?toDate(row[m.date]):null,city:m.city!=null?S(row[m.city])||"ALL":"ALL",ean,code,id,qty:num(row[m.qty]),grnQty:m.grn!=null?num(row[m.grn]):0,tp:m.tp!=null?num(row[m.tp]):0,status:st||null,file:f.name});
+        lines++;pos.add(po)}}
+  }catch(e){ISSUES.push(`${f.name}: could not be read (${e.message}).`)}}
+  ST.src.po="upload";$("s_po").textContent=`${pos.size} POs, ${lines} lines added`;
+  if(!lines)ISSUES.push("No PO lines found. The PO file needs a PO No. column and an EAN, Dchica Sku or Zepto SKU ID column.");
+  compute();
+}
+
+async function uploadSales(f){
+  try{const wb=await readWb(f);let found=null,daily=null;
+    for(const n of wb.SheetNames){const arr=sheetArr(wb.Sheets[n]);
+      const h=bestHeader(arr,SALIAS,["id","ean","code"]);
+      if(h&&!found&&(h.m.stock!=null||h.m.sold!=null||h.m.s30!=null||h.m.dq!=null))found={arr,h,n};
+      // date-wise totals table anywhere in the first 20 rows
+      for(let i=0;i<Math.min(arr.length,20)&&!daily;i++){const row=arr[i]||[];const nr=row.map(norm);
+        for(let c=0;c<nr.length;c++){if(nr[c]==="date"){const q=[c+1,c+2,c+3].find(k=>["saleqty","qtysold","qty","units"].includes(nr[k]));
+          if(q!=null){const out=[];for(let r=i+1;r<arr.length;r++){const dt=toDate(arr[r]?.[c]);if(!dt||!(arr[r][c] instanceof Date||typeof arr[r][c]==="number"&&arr[r][c]>20000))continue;out.push({date:dt,u:num(arr[r][q])})}
+            if(out.length>=7){daily=out;break}}}}}
+    }
+    if(!found){ISSUES.push(`${f.name}: no SKU column found next to stock or sales columns.`);compute();return}
+    const {arr,h}=found,m=h.m;const rows=[];
+    if(m.date!=null&&m.dq!=null&&m.sold==null){ // daily SKU rows
+      const by=new Map();let max=null;
+      for(let r=h.i+1;r<arr.length;r++){const row=arr[r]||[];const id=S(row[m.id??m.code??m.ean]);const dt=toDate(row[m.date]);if(!id||!dt)continue;
+        if(!max||dt>max)max=dt;if(!by.has(id))by.set(id,{id,days:[],stock:null,stockDate:null});const o=by.get(id);o.days.push({dt,q:num(row[m.dq])});
+        if(m.stock!=null&&row[m.stock]!=null&&(!o.stockDate||dt>=o.stockDate)){o.stock=num(row[m.stock]);o.stockDate=dt}}
+      for(const o of by.values()){const s=w=>o.days.filter(x=>(max-x.dt)/DAY<w).reduce((a,x)=>a+x.q,0);rows.push({id:o.id,stock:o.stock??0,s7:s(7),s14:s(14),s30:s(30),hasStock:o.stock!=null})}
+      ST.sales={kind:"direct",asOf:max,rows,file:f.name};
+    }else if(m.s30!=null||m.s7!=null){
+      for(let r=h.i+1;r<arr.length;r++){const row=arr[r]||[];const id=S(row[m.id??m.code??m.ean]);if(!id)continue;
+        rows.push({id,stock:num(row[m.stock]),s7:num(row[m.s7]),s30:num(row[m.s30]),s14:null,hasStock:m.stock!=null})}
+      ST.sales={kind:"direct",asOf:null,rows,file:f.name};
+    }else{
+      for(let r=h.i+1;r<arr.length;r++){const row=arr[r]||[];const id=S(row[m.id??m.code??m.ean]);if(!id||/total/i.test(id))continue;
+        rows.push({id,stock:num(row[m.stock]),sold:num(row[m.sold])})}
+      ST.sales={kind:"share",asOf:daily?daily[daily.length-1].date:null,rows,daily,file:f.name};
+      if(!daily)ISSUES.push(`${f.name}: no date-wise sales table found, so each SKU's rate is Sold Qty spread over 30 days. Add a Date / Sale Qty table or Sold Last 30 Days columns for an accurate rate.`);
+    }
+    ST.src.sales="upload";$("s_sa").textContent=`${rows.length} SKUs${ST.sales.asOf?", sales to "+fd(ST.sales.asOf):""}`;
+  }catch(e){ISSUES.push(`${f.name}: could not be read (${e.message}).`)}
+  compute();
+}
+
+async function uploadMaster(f){
+  try{const wb=await readWb(f);const n=wb.SheetNames.find(x=>norm(x)==="skumaster")||wb.SheetNames[0];const arr=sheetArr(wb.Sheets[n]);
+    const h=bestHeader(arr,MALIAS,["id","code"]);if(!h){ISSUES.push(`${f.name}: no Zepto SKU ID or D'Chica SKU Code column.`);compute();return}
+    const m=h.m,rows=[];
+    for(let r=h.i+1;r<arr.length;r++){const row=arr[r]||[];const id=S(row[m.id]),code=S(row[m.code]);if(!id&&!code)continue;
+      rows.push({id,code,ean:S(row[m.ean]),name:[S(row[m.name]),S(row[m.size])].filter(Boolean).join(" ")||code||id.slice(0,8),cat:S(row[m.cat]),price:num(row[m.price])})}
+    ST.master=masterFromRows(rows);ST.src.master="upload";$("s_ma").textContent=`${rows.length} SKUs loaded`;
+  }catch(e){ISSUES.push(`${f.name}: could not be read (${e.message}).`)}
+  compute();
+}
+
+// ---------- core ----------
+let MODEL=null;
+function cfg(){return{rb:+$("rb").value,mx:num($("mx").value),mn:num($("mn").value),tc:num($("tc").value),gl:num($("gl").value),zt:num($("zt").value),pl:num($("pl").value),mg:num($("mg").value)/100,dd:num($("dd").value)/100}}
+
+function compute(){
+  const C=cfg(),iss=[...ISSUES];
+  const idx=new Map();for(const m of ST.master.values()){for(const k of [m.id,m.ean,m.code])if(k)idx.set(norm(k),m.key)}
+  const resolve=(...ks)=>{for(const k of ks){if(k&&idx.has(norm(k)))return idx.get(norm(k))}return null};
+  // SKUs
+  const sku=new Map();const get=k=>{if(!sku.has(k)){const m=ST.master.get(k);sku.set(k,{key:k,m,name:m?m.name:k,cat:m?m.cat:"",price:m&&m.price?m.price*PRICE_FACTOR:0,tpSeen:0,stock:0,rate:0,hasSales:false,transit:0,lines:[]})}return sku.get(k)};
+  const sa=ST.sales;let totRate=0;
+  if(sa){
+    if(sa.kind==="share"){const totSold=sa.rows.reduce((a,r)=>a+r.sold,0);
+      let tr=null;if(sa.daily&&sa.daily.length){const w=sa.daily.slice(-C.rb);tr=w.reduce((a,x)=>a+x.u,0)/w.length}
+      for(const r of sa.rows){const k=resolve(r.id)||r.id;const s=get(k);s.stock+=r.stock;s.hasSales=true;s.rate+=tr!=null?(totSold?tr*r.sold/totSold:0):r.sold/30}
+    }else{for(const r of sa.rows){const k=resolve(r.id)||r.id;const s=get(k);s.stock+=r.stock;s.hasSales=true;
+      s.rate+=C.rb===7?r.s7/7:C.rb===14?(r.s14!=null?r.s14/14:(r.s7/7+r.s30/30)/2):r.s30/30}}
+    for(const s of sku.values())totRate+=s.rate;
+    const unk=[...sku.values()].filter(s=>!s.m&&s.hasSales).length;if(unk)iss.push(`${unk} SKUs in the sales sheet aren't in the SKU master. They're checked under their Zepto ID.`);
+  }else iss.push("No sales sheet loaded, so cover can't be calculated. Upload the Zepto SKU-wise sales sheet.");
+  // PO lines
+  const pos=new Map();const unmatched=new Set();
+  for(const l of ST.pos.values()){
+    const k=resolve(l.id,l.ean,l.code);const key=k||(l.code||l.ean||l.id);if(!k)unmatched.add(l.code||l.ean||l.id);
+    const s=get(key);if(l.tp)s.tpSeen=l.tp;
+    if(!pos.has(l.po)){const meta=ST.meta[l.po]||{};pos.set(l.po,{po:l.po,date:l.date,city:new Set(),lines:[],ask:meta.ask||null,payMeta:meta.pay||null,file:l.file,fileStatus:l.status})}
+    const p=pos.get(l.po);p.city.add(l.city);if(l.date&&(!p.date||l.date<p.date))p.date=l.date;
+    p.lines.push({...l,key,s,pend:Math.max(0,l.qty-l.grnQty)});
+  }
+  unmatched.forEach(u=>iss.push(`PO SKU ${u} doesn't match the SKU master (EAN or D'Chica SKU code). It's checked as an unknown SKU with no stock or sales.`));
+  for(const p of pos.values()){
+    p.status=UI.status[p.po]||p.fileStatus||"New";
+    const g=UI.grn[p.po];p.grnDate=g?toDate(g):null;
+    p.units=p.lines.reduce((a,x)=>a+x.pend,0);p.value=p.lines.reduce((a,x)=>a+x.pend*(x.tp||x.s.price),0);
+    if(p.status==="In Transit")p.lines.forEach(x=>x.s.transit+=x.pend);
+  }
+  for(const s of sku.values()){if(!s.price&&s.tpSeen)s.price=s.tpSeen;if(s.tpSeen)s.price=s.tpSeen}
+  // sequential PO check
+  const newPos=[...pos.values()].filter(p=>p.status==="New").sort((a,b)=>(a.date||0)-(b.date||0)||a.po.localeCompare(b.po));
+  const run=new Map();for(const s of sku.values())run.set(s.key,s.stock+s.transit);
+  for(const p of newPos){p.cut=0;p.cutV=0;p.flag=0;
+    for(const x of p.lines){const s=x.s,before=run.get(s.key)||0,lim=s.rate*C.mx;
+      if(!s.hasSales){x.st="nodata";x.cut=0}
+      else if(s.rate===0){x.st="nosale";x.cut=x.pend}
+      else{x.cut=Math.min(x.pend,Math.max(0,Math.round(before+x.pend-lim)));x.st=x.cut?(x.cut===x.pend?"overall":"over"):"ok"}
+      x.before=s.rate?before/s.rate:Infinity;x.after=s.rate?(before+x.pend)/s.rate:Infinity;
+      run.set(s.key,before+x.pend-x.cut);
+      if(x.cut){p.cut+=x.cut;p.cutV+=x.cut*(x.tp||s.price);p.flag++}
+    }
+    p.verdict=p.cut===0?(p.lines.some(x=>x.st==="nodata")?"check":"ok"):p.cut/p.units<0.15?"trim":"over";
+  }
+  MODEL={C,sku,pos,newPos,totRate,iss};
+  render();
+}
+
+// ---------- render ----------
+const LBL={ok:["Within limit","p-ok"],over:["Overstock, trim","p-bad"],overall:["Overstock, drop line","p-bad"],nosale:["No sales","p-bad"],nodata:["No sales data","p-warn"]};
+const VER={ok:["Accept","p-ok"],trim:["Accept with cuts","p-warn"],over:["Overstocks, renegotiate","p-bad"],check:["Accept, some lines unchecked","p-info"]};
+const fdays=d=>!isFinite(d)?"∞":Math.round(d)+"d";
+
+function render(){
+  const {C,sku,pos,newPos,totRate,iss}=MODEL;
+  const ex=ST.src.po==="example"||ST.src.sales==="example";
+  $("banner").className="banner"+(ex?"":" ok");
+  $("banner").innerHTML=ex?`<b>Example loaded:</b> the 5 Oct Zepto POs and the 20 Jan–14 Oct sale &amp; inventory sheet. Upload your files to replace either one. The SKU master's EAN and code matches are proposed and need confirming.`:`<b>Your files.</b> POs: ${pos.size}. Sales: ${ST.sales?ST.sales.file:"not loaded"}. Statuses and GRN dates you set are saved in this browser.`;
+  if(!$("s_po").textContent)$("s_po").textContent=ST.src.po==="example"?"Example loaded":"";
+  if(!$("s_sa").textContent)$("s_sa").textContent=ST.src.sales==="example"?"Example loaded":"";
+  if(!$("s_ma").textContent)$("s_ma").textContent="Built-in, 29 SKUs";
+
+  // ---- PO check
+  const nU=newPos.reduce((a,p)=>a+p.units,0),nV=newPos.reduce((a,p)=>a+p.value,0),cU=newPos.reduce((a,p)=>a+p.cut,0),cV=newPos.reduce((a,p)=>a+p.cutV,0);
+  const tr=[...pos.values()].filter(p=>p.status==="In Transit");
+  $("k_check").innerHTML=[["New POs to check",`${newPos.length}`,`${N(nU)} units · ${L(nV)}`],["In transit",`${tr.length}`,`${N(tr.reduce((a,p)=>a+p.units,0))} units · ${L(tr.reduce((a,p)=>a+p.value,0))}`],
+    ["POs that overstock",`${newPos.filter(p=>p.cut>0).length}`,`of ${newPos.length} New POs`],["Suggested cut",`${N(cU)} u`,L(cV),cU>0]]
+    .map(([l,v,n,h])=>`<div class="kpi${h?" hl":""}"><span class="l">${l}</span><span class="v">${v}</span><span class="n">${n}</span></div>`).join("");
+  $("c_check").textContent=newPos.length;
+  const opts=["New","In Transit","Received","Cancelled"];
+  let h=`<tr><th class="l">PO / SKU</th><th class="l">Date</th><th class="l">Location</th><th>Units</th><th>Value</th><th>Cover before</th><th>Cover after</th><th>Cut</th><th>Accept</th><th class="l">Status / verdict</th><th class="l">GRN date</th></tr>`;
+  const all=[...pos.values()].sort((a,b)=>(b.date||0)-(a.date||0));
+  if(!all.length)h+=`<tr><td class="l" colspan="11">No POs loaded.</td></tr>`;
+  for(const p of all){
+    const v=p.status==="New"?VER[p.verdict]:null;
+    h+=`<tr class="po"><td class="l"><b>${p.po}</b></td><td class="l">${fd(p.date)}</td><td class="l">${[...p.city].join(", ")}</td><td>${N(p.units)}</td><td>${L(p.value)}</td><td></td><td></td><td class="${p.cut?"cut":""}">${p.status==="New"?N(p.cut):"–"}</td><td>${p.status==="New"?N(p.units-p.cut):"–"}</td>
+      <td class="l"><select data-po="${p.po}" aria-label="Status of ${p.po}">${opts.map(o=>`<option${o===p.status?" selected":""}>${o}</option>`).join("")}</select> ${v?`<span class="pill ${v[1]}">${v[0]}</span>`:""}</td>
+      <td class="l"><input type="date" data-grn="${p.po}" value="${iso(p.grnDate)}" aria-label="GRN date of ${p.po}"></td></tr>`;
+    if(p.status==="New"){const ls=[...p.lines].sort((a,b)=>(b.cut-a.cut)||(b.pend-a.pend));
+      for(const x of ls){const lb=LBL[x.st];h+=`<tr><td class="l muted">${x.s.name}</td><td></td><td class="l muted">${x.city}</td><td>${N(x.pend)}</td><td>${R(x.pend*(x.tp||x.s.price))}</td><td>${x.st==="nodata"?"–":fdays(x.before)}</td><td>${x.st==="nodata"?"–":fdays(x.after)}</td><td class="${x.cut?"cut":""}">${N(x.cut)}</td><td>${N(x.pend-x.cut)}</td><td class="l"><span class="pill ${lb[1]}">${lb[0]}</span></td><td></td></tr>`}}
+  }
+  $("tb_check").innerHTML=h;
+  document.querySelectorAll("#tb_check select").forEach(s=>s.onchange=()=>{UI.status[s.dataset.po]=s.value;saveUI();compute()});
+  document.querySelectorAll("#tb_check input[type=date]").forEach(i=>i.onchange=()=>{if(i.value)UI.grn[i.dataset.grn]=i.value;else delete UI.grn[i.dataset.grn];saveUI();compute()});
+
+  // ---- Alerts
+  const al=[];
+  for(const p of newPos)if(p.cut>0)al.push(["bad","PO overstocks",`<b>${p.po}</b> (${[...p.city].join(", ")}, ${fd(p.date)}): ${p.flag} lines take SKUs past ${C.mx} days. Cut ${N(p.cut)} of ${N(p.units)} units (${L(p.cutV)}).`]);
+  const S2=[...sku.values()].filter(s=>s.hasSales||s.transit);
+  for(const s of S2){const pos2=s.stock+s.transit,cov=s.rate?pos2/s.rate:Infinity;
+    if(s.rate===0&&pos2>0)al.push(["bad","Not selling",`<b>${s.name}</b>: ${N(pos2)} units at Zepto or in transit and no sales in the last ${C.rb} days.`]);
+    else if(cov>C.mx)al.push(["bad","Overstocked",`<b>${s.name}</b>: ${fdays(cov)} of stock (${N(s.stock)} live + ${N(s.transit)} in transit, selling ${s.rate.toFixed(1)}/day). ${N(pos2-s.rate*C.mx)} units above the ${C.mx}-day limit. Hold new POs on this SKU.`]);
+    else if(s.rate>0&&cov<C.mn)al.push(["warn","Running low",`<b>${s.name}</b>: ${fdays(cov)} of stock (${N(s.stock)} live + ${N(s.transit)} in transit, selling ${s.rate.toFixed(1)}/day). Likely to sell out before the next GRN.`]);
+  }
+  const order={bad:0,warn:1};al.sort((a,b)=>order[a[0]]-order[b[0]]);
+  $("alerts").innerHTML=al.length?al.map(([c,t,x])=>`<li><span class="pill ${c==="bad"?"p-bad":"p-warn"}">${t}</span><span>${x}</span></li>`).join(""):`<li><span class="pill p-ok">Clear</span><span>No SKU is above ${C.mx} days or below ${C.mn} days, and no New PO overstocks.</span></li>`;
+  const nb=al.filter(a=>a[0]==="bad").length;$("c_alert").textContent=nb||al.length;$("c_alert").className="ct"+(nb?" bad":"");
+
+  // ---- SKU table
+  const rows=[...sku.values()].filter(s=>s.hasSales||s.transit||s.lines?.length).sort((a,b)=>((b.rate?(b.stock+b.transit)/b.rate:1e9)-(a.rate?(a.stock+a.transit)/a.rate:1e9)));
+  let sh=`<tr><th class="l">SKU</th><th class="l">Category</th><th>Live stock</th><th>In transit</th><th>Sold / day</th><th>Cover now</th><th>Cover incl. transit</th><th>Price used</th></tr>`;
+  for(const s of rows){const c1=s.rate?s.stock/s.rate:Infinity,c2=s.rate?(s.stock+s.transit)/s.rate:Infinity;
+    const cls=c2>C.mx?"cut":"";sh+=`<tr><td class="l">${s.name}</td><td class="l muted">${s.cat}</td><td>${N(s.stock)}</td><td>${N(s.transit)}</td><td>${s.rate.toFixed(1)}</td><td>${fdays(c1)}</td><td class="${cls}">${fdays(c2)}</td><td>${s.price?R(s.price):"–"}</td></tr>`}
+  const ts=rows.reduce((a,s)=>[a[0]+s.stock,a[1]+s.transit,a[2]+s.rate],[0,0,0]);
+  sh+=`<tr class="tot"><td class="l">Total</td><td></td><td>${N(ts[0])}</td><td>${N(ts[1])}</td><td>${ts[2].toFixed(1)}</td><td>${ts[2]?fdays(ts[0]/ts[2]):"–"}</td><td>${ts[2]?fdays((ts[0]+ts[1])/ts[2]):"–"}</td><td></td></tr>`;
+  $("tb_sku").innerHTML=sh;
+
+  renderPay();
+  $("issues").innerHTML=[...new Set(iss)].map(x=>`<li>${x}</li>`).join("")||`<li>No problems found in the uploaded data.</li>`;
+  $("h_iss").textContent=`Data checks (${new Set(iss).size})`;
+}
+
+function monthOpts(){
+  const sel=$("pm");if(sel.options.length)return;const t=new Date();
+  for(let i=-1;i<=3;i++){const d=new Date(t.getFullYear(),t.getMonth()+i,1);const o=document.createElement("option");o.value=d.getFullYear()*12+d.getMonth();o.textContent=d.toLocaleDateString("en-IN",{month:"long",year:"numeric"});if(i===0)o.selected=true;sel.appendChild(o)}
+}
+function renderPay(){
+  monthOpts();
+  const {C,sku,pos}=MODEL;const mk=+$("pm").value,inclEx=$("ex").value==="1";
+  const mStart=new Date(Math.floor(mk/12),mk%12,1),mEnd=new Date(Math.floor(mk/12),mk%12+1,0);
+  const inM=d=>d&&d>=mStart&&d<=mEnd;
+  const today=d0(new Date());
+  const items=[];
+  for(const p of pos.values()){if(p.status==="Cancelled")continue;
+    const accept=p.status==="New"?p.value-p.cutV:p.value;
+    let grn=p.grnDate;let est=false;
+    if(!grn&&p.date){grn=new Date(p.date.getTime()+C.gl*DAY);if(p.ask&&grn>p.ask)grn=p.ask;est=true}
+    const zp=grn?new Date(grn.getTime()+C.zt*DAY):null;
+    const dp=p.payMeta||(p.date?new Date(p.date.getTime()+C.pl*DAY):null);
+    items.push({src:p.po,type:p.status==="Received"?"Received":p.status==="In Transit"?"In transit":"New (after cuts)",date:p.date,grn,est,zp,dp,dpMeta:!!p.payMeta,val:accept,zIn:accept*(1-C.dd),dOut:accept*(1-C.mg)});
+  }
+  // expected POs for the month (forecast)
+  let expV=0,expU=0;
+  if(inclEx&&MODEL.totRate>0){
+    const from=mk===today.getFullYear()*12+today.getMonth()?today:mStart;
+    if(from<=mEnd){const daysLeft=Math.round((mEnd-from)/DAY)+1;
+      const nowMk=today.getFullYear()*12+today.getMonth();
+      for(const s of sku.values()){if(!s.rate)continue;
+        const inHand=[...pos.values()].filter(p=>p.status!=="Cancelled"&&p.status!=="Received").reduce((a,p)=>a+p.lines.filter(x=>x.s===s).reduce((b,x)=>b+(p.status==="New"?x.pend-x.cut:x.pend),0),0);
+        let u;
+        if(mk===nowMk){u=Math.max(0,s.rate*daysLeft+s.rate*(C.tc+C.gl)-(s.stock+inHand))}
+        else u=s.rate*daysLeft;
+        expU+=u;expV+=u*s.price}
+      const cyc=Math.max(1,Math.round(daysLeft/7));
+      for(let i=0;i<cyc;i++){const pd=new Date(from.getTime()+Math.round((i+0.5)*daysLeft/cyc)*DAY);const grn=new Date(pd.getTime()+C.gl*DAY);
+        items.push({src:`Forecast PO ${i+1}`,type:"Expected",date:pd,grn,est:true,zp:new Date(grn.getTime()+C.zt*DAY),dp:new Date(pd.getTime()+C.pl*DAY),val:expV/cyc,zIn:expV/cyc*(1-C.dd),dOut:expV/cyc*(1-C.mg),fc:true})}
+    }
+  }
+  const zIn=items.filter(i=>inM(i.zp)).reduce((a,i)=>a+i.zIn,0);
+  const dOut=items.filter(i=>inM(i.dp)).reduce((a,i)=>a+i.dOut,0);
+  const owed=items.filter(i=>i.zp&&i.zp>mEnd&&!i.fc).reduce((a,i)=>a+i.zIn,0);
+  const mName=mStart.toLocaleDateString("en-IN",{month:"long"});
+  $("k_pay").innerHTML=[["Zepto pays reseller",L(zIn),`due in ${mName}, after ${Math.round(C.dd*100)}% deductions`,true],["Reseller pays D'Chica",L(dOut),`due in ${mName}, at ${100-Math.round(C.mg*100)}% of PO value`],
+    ["Reseller net cash",(zIn-dOut<0?"−":"")+L(Math.abs(zIn-dOut)),zIn-dOut<0?"reseller funds the gap this month":"surplus this month"],["Expected POs this month",L(expV),inclEx?`${N(expU)} units forecast from sales`:"forecast switched off"]]
+    .map(([l,v,n,h])=>`<div class="kpi${h?" hl":""}"><span class="l">${l}</span><span class="v">${v}</span><span class="n">${n}</span></div>`).join("");
+  items.sort((a,b)=>(a.zp||0)-(b.zp||0));
+  let h=`<tr><th class="l">PO</th><th class="l">Type</th><th class="l">PO date</th><th class="l">GRN</th><th>PO value</th><th class="l">Zepto pays on</th><th>Zepto → reseller</th><th class="l">Reseller pays on</th><th>Reseller → D'Chica</th></tr>`;
+  for(const i of items){const zin=inM(i.zp),din=inM(i.dp);
+    h+=`<tr><td class="l">${i.src}</td><td class="l"><span class="pill ${i.fc?"p-info":i.type==="Received"?"p-ok":i.type==="In transit"?"p-warn":"p-info"}">${i.type}</span></td><td class="l">${fd(i.date)}</td><td class="l">${fd(i.grn)}${i.est?" (est.)":""}</td><td>${L(i.val)}</td><td class="l">${fd(i.zp)}</td><td style="${zin?"font-weight:600":"color:var(--muted)"}">${zin?L(i.zIn):"–"}</td><td class="l">${fd(i.dp)}${i.dpMeta?" (PO sheet)":""}</td><td style="${din?"font-weight:600":"color:var(--muted)"}">${din?L(i.dOut):"–"}</td></tr>`}
+  h+=`<tr class="tot"><td class="l">${mName} total</td><td></td><td></td><td></td><td></td><td></td><td>${L(zIn)}</td><td></td><td>${L(dOut)}</td></tr>`;
+  $("tb_pay").innerHTML=h;
+  $("paynotes").innerHTML=[
+    `GRN dates you enter in the PO check tab replace the estimate of PO date + ${C.gl} days, capped at Zepto's ask date where the PO sheet has one. Zepto pays ${C.zt} days after GRN.`,
+    `Reseller pays D'Chica on the PO sheet's payment date where there is one, otherwise PO date + ${C.pl} days.`,
+    `New POs count at their accepted value, after the suggested cuts.`,
+    `Forecast POs: for the current month, what Zepto would need to order by month end to stay at ${C.tc} days of cover plus ${C.gl} days of lead time. For later months, one month of sales at the current rate. Split into weekly rounds.`,
+    `Still owed by Zepto after ${mName} on POs in hand: ${L(owed)}.`,
+    `POs not uploaded here, such as older POs still awaiting Zepto payment, aren't counted.`].map(x=>`<li>${x}</li>`).join("");
+}
+
+// ---------- wiring ----------
+function dz(id,input,fn,multi){const z=$(id);["dragenter","dragover"].forEach(e=>z.addEventListener(e,ev=>{ev.preventDefault();z.classList.add("over")}));
+  ["dragleave","drop"].forEach(e=>z.addEventListener(e,ev=>{ev.preventDefault();z.classList.remove("over")}));
+  z.addEventListener("drop",ev=>{const f=[...ev.dataTransfer.files];if(f.length){ISSUES=[];fn(multi?f:f[0])}});
+  $(input).addEventListener("change",ev=>{const f=[...ev.target.files];if(f.length){ISSUES=[];fn(multi?f:f[0])}ev.target.value=""})}
+dz("d_po","f_po",uploadPOs,true);dz("d_sa","f_sa",uploadSales,false);dz("d_ma","f_ma",uploadMaster,false);
+["rb","mx","mn","tc","gl","zt","pl","mg","dd"].forEach(id=>$(id).addEventListener("input",compute));
+["pm","ex"].forEach(id=>$(id).addEventListener("input",renderPay));
+$("reset").onclick=()=>{ISSUES=[];["s_po","s_sa","s_ma"].forEach(i=>$(i).textContent="");loadSample();compute()};
+const TABS=["check","alert","pay","sku"];
+TABS.forEach(t=>$("t_"+t).onclick=()=>{TABS.forEach(x=>{$("t_"+x).setAttribute("aria-selected",x===t);$("v_"+x).hidden=x!==t})});
+$("copy").onclick=async()=>{const lines=["PO\tLocation\tSKU\tOrdered\tCut\tAccept\tReason"];
+  for(const p of MODEL.newPos)for(const x of p.lines)if(x.cut)lines.push([p.po,x.city,x.s.name,x.pend,x.cut,x.pend-x.cut,LBL[x.st][0]].join("\t"));
+  try{await navigator.clipboard.writeText(lines.join("\n"));$("checknote").textContent=`Copied ${lines.length-1} lines. Paste into Excel or an email to Zepto.`}catch(e){$("checknote").textContent="Copy was blocked here. Select the table and copy it manually."}};
+loadSample();compute();
+</script>
+</body>
+</html>
