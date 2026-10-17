@@ -1,280 +1,758 @@
-// ============================================================
-// D'Chica COGS Monitor — Google Apps Script v6
-// v6 change: cost lookup uses FULL SKU including size suffix
-// (e.g. DCWNCPBJU8932/XL) so each size gets its own cost.
-// Freebie check still uses master SKU prefix (DCFR).
-// ============================================================
-
-const COSTING_SHEET_ID = "1np-x-FaSeuK1omriLNnwpOJE6T163pPDIudGKUGrl9U";
-const COUPON_SHEET_ID  = "1t2G4TE1svhXbtio6jwmqa9obkUCchxZ3rH95kdQKHDA";
-const FREEBIE_PREFIX   = "DCFR";
-const NEW_COST_COL     = 8;   // column I: "New Cost (Viscose)"
-
-// ── MENU ─────────────────────────────────────────────────────
-
-function onOpen() {
-  SpreadsheetApp.getUi()
-    .createMenu("📊 D'Chica COGS")
-    .addItem("▶  Run COGS Report", "runCOGSReport")
-    .addToUi();
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>D'Chica COGS Tool</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+:root {
+  --bg: #f5f4f0;
+  --card: #ffffff;
+  --border: #e2e0d8;
+  --accent: #1a1a2e;
+  --accent2: #e8533a;
+  --text: #1a1919;
+  --muted: #8a8577;
+  --ok: #2d7a4f;
+  --warn: #b45309;
+  --okbg: #ecfdf5;
+  --warnbg: #fffbeb;
+  --errbg: #fef2f2;
+  --mono: 'Courier New', monospace;
 }
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { background: var(--bg); color: var(--text); font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; font-size: 14px; line-height: 1.5; }
+header { background: var(--accent); color: #fff; padding: 16px 24px; display: flex; align-items: center; gap: 12px; }
+header h1 { font-size: 18px; font-weight: 700; letter-spacing: -0.3px; }
+header span { font-size: 12px; opacity: .6; margin-left: auto; }
+.tabs { display: flex; gap: 0; border-bottom: 2px solid var(--accent); background: var(--card); padding: 0 24px; }
+.tab { padding: 10px 18px; font-size: 13px; font-weight: 600; cursor: pointer; border: none; background: none; color: var(--muted); border-bottom: 3px solid transparent; margin-bottom: -2px; transition: color .15s; }
+.tab.active { color: var(--accent); border-bottom-color: var(--accent2); }
+.tab:hover { color: var(--text); }
+.main { max-width: 900px; margin: 0 auto; padding: 24px; }
+.section { background: var(--card); border: 1px solid var(--border); border-radius: 8px; padding: 20px; margin-bottom: 16px; }
+.section h2 { font-size: 13px; font-weight: 700; text-transform: uppercase; letter-spacing: .5px; color: var(--muted); margin-bottom: 14px; }
+.row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 10px; }
+.row label { font-size: 13px; font-weight: 600; min-width: 120px; }
+input[type=file] { font-size: 13px; }
+input[type=number] { width: 60px; padding: 4px 8px; border: 1px solid var(--border); border-radius: 4px; font-size: 13px; }
+select { padding: 5px 8px; border: 1px solid var(--border); border-radius: 4px; font-size: 13px; background: #fff; min-width: 160px; }
+.filestatus { font-size: 12px; font-family: var(--mono); }
+.filestatus.ok { color: var(--ok); }
+.filestatus.pending { color: var(--muted); }
+.hint { font-size: 12px; color: var(--muted); margin: 4px 0 10px 0; }
+.hidden { display: none !important; }
+.warn-box { background: var(--warnbg); border: 1px solid #fcd34d; border-radius: 6px; padding: 10px 14px; font-size: 12px; color: var(--warn); margin: 8px 0; }
+.ok-box { background: var(--okbg); border: 1px solid #6ee7b7; border-radius: 6px; padding: 10px 14px; font-size: 12px; color: var(--ok); margin: 8px 0; }
+.err-box { background: var(--errbg); border: 1px solid #fca5a5; border-radius: 6px; padding: 10px 14px; font-size: 12px; color: #b91c1c; margin: 8px 0; }
+.map-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin: 10px 0; }
+.map-row { display: flex; align-items: center; gap: 8px; }
+.map-row label { font-size: 12px; min-width: 130px; color: var(--muted); }
+.chip-row { display: flex; gap: 8px; flex-wrap: wrap; margin: 8px 0; }
+.chip { padding: 4px 12px; border-radius: 20px; border: 1.5px solid var(--border); font-size: 12px; cursor: pointer; background: #fff; transition: all .15s; user-select: none; }
+.chip.active { background: var(--accent); color: #fff; border-color: var(--accent); }
+.run-btn { background: var(--accent2); color: #fff; border: none; padding: 11px 28px; border-radius: 6px; font-size: 14px; font-weight: 700; cursor: pointer; margin-top: 8px; transition: opacity .15s; }
+.run-btn:disabled { opacity: .4; cursor: not-allowed; }
+.results { background: var(--card); border: 1px solid var(--border); border-radius: 8px; padding: 24px; margin-top: 16px; }
+.results h2 { font-size: 16px; font-weight: 700; margin-bottom: 16px; }
+.kpi-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 12px; margin-bottom: 20px; }
+.kpi { background: var(--bg); border-radius: 8px; padding: 14px 16px; }
+.kpi .label { font-size: 11px; text-transform: uppercase; letter-spacing: .5px; color: var(--muted); margin-bottom: 4px; }
+.kpi .value { font-size: 22px; font-weight: 800; font-family: var(--mono); }
+.kpi .value.red { color: var(--accent2); }
+.kpi .value.green { color: var(--ok); }
+.download-btn { background: var(--accent); color: #fff; border: none; padding: 8px 18px; border-radius: 5px; font-size: 12px; font-weight: 600; cursor: pointer; margin-right: 8px; margin-top: 8px; }
+.unmatched-list { font-family: var(--mono); font-size: 12px; background: var(--bg); border-radius: 6px; padding: 12px; max-height: 200px; overflow-y: auto; margin-top: 8px; }
+.unmatched-list div { padding: 2px 0; color: var(--warn); }
+.deal-table { width: 100%; border-collapse: collapse; font-size: 13px; margin-top: 12px; }
+.deal-table th { background: var(--accent); color: #fff; padding: 8px 12px; text-align: left; }
+.deal-table td { padding: 7px 12px; border-bottom: 1px solid var(--border); }
+.deal-table tr:nth-child(even) td { background: #fafaf8; }
+.meta-info { font-size: 11px; color: var(--muted); font-family: var(--mono); margin-top: 12px; }
+</style>
+</head>
+<body>
 
-// ── MAIN ─────────────────────────────────────────────────────
+<header>
+  <h1>📊 D'Chica COGS Tool</h1>
+  <span>Client-side · no data leaves your browser</span>
+</header>
 
-function runCOGSReport() {
-  const ss = SpreadsheetApp.getActiveSpreadsheet();
-  const ui = SpreadsheetApp.getUi();
+<div class="tabs">
+  <button class="tab active" data-platform="shopify">Shopify</button>
+  <button class="tab" data-platform="amazon">Amazon</button>
+  <button class="tab" data-platform="meesho">Meesho</button>
+  <button class="tab" data-platform="myntra">Myntra</button>
+  <button class="tab" data-platform="dealpricing">Deal Pricing</button>
+</div>
 
-  const result = ui.prompt(
-    "Paste the Google Drive File ID of the Shopify export (.csv)",
-    "Open the file in Drive → copy the ID from the URL",
-    ui.ButtonSet.OK_CANCEL
-  );
-  if (result.getSelectedButton() !== ui.Button.OK) return;
+<div class="main">
 
-  const fileId = result.getResponseText().trim();
-  if (!fileId) { ui.alert("No file ID entered."); return; }
+  <!-- ── 1. COSTING SHEET ─────────────────────── -->
+  <div class="section" id="costingSection">
+    <h2>1. Costing Sheet</h2>
+    <div class="row">
+      <input type="file" id="costingFile" accept=".csv,.xlsx,.xls">
+      <span class="filestatus pending" id="costingStatus">No file uploaded</span>
+    </div>
+    <div class="hint">Upload your internal costing sheet (CSV or Excel). SKU in column A, cost in New Cost / Current Cost column.</div>
+    <div id="costingHeaderRowWrap" class="hidden">
+      <div class="row">
+        <label>Header row #</label>
+        <input type="number" id="costingHeaderRow" value="1" min="1" max="10">
+      </div>
+      <div class="hint" style="margin:0;">If there's a title/banner row above the real column headers, set this to that row number.</div>
+    </div>
+    <div id="costingHeaderWarn"></div>
+    <div id="costingMapRow" class="hidden">
+      <div class="map-grid">
+        <div class="map-row"><label>SKU column</label><select id="costSkuCol"></select></div>
+        <div class="map-row"><label>Primary cost column</label><select id="costNewCol"></select></div>
+        <div class="map-row"><label>Fallback cost column</label><select id="costFallbackCol"></select></div>
+      </div>
+    </div>
+  </div>
 
-  ss.toast("Reading export file…", "D'Chica COGS", -1);
+  <!-- ── 2. COUPON RULES (Shopify only) ───────── -->
+  <div class="section" id="couponSection">
+    <h2>2. Coupon Rules Sheet <span style="font-weight:400;font-size:11px;color:var(--muted);">(Shopify only)</span></h2>
+    <div class="row">
+      <input type="file" id="couponFile" accept=".csv,.xlsx,.xls">
+      <span class="filestatus pending" id="couponStatus">No file uploaded (optional)</span>
+    </div>
+    <div class="hint">Columns: Coupon Code | Freebie SKUs (comma-separated) | Other Items Included (YES/NO). If not uploaded, only SKU prefix DCFR is used for freebie detection.</div>
+    <div id="couponMapRow" class="hidden">
+      <div class="map-grid">
+        <div class="map-row"><label>Coupon code column</label><select id="couponCodeCol"></select></div>
+        <div class="map-row"><label>Freebie SKUs column</label><select id="couponSkuCol"></select></div>
+        <div class="map-row"><label>Other items included</label><select id="couponOtherCol"></select></div>
+      </div>
+    </div>
+  </div>
 
-  try {
-    const file = DriveApp.getFileById(fileId);
-    const name = file.getName().toLowerCase();
+  <!-- ── 3. SALES REPORT ──────────────────────── -->
+  <div class="section">
+    <h2>3. <span id="reportLabel">Shopify</span> Sales Report</h2>
+    <div class="row">
+      <input type="file" id="reportFile" multiple accept=".csv,.xlsx,.xls">
+      <span class="filestatus pending" id="reportStatus">No file uploaded</span>
+    </div>
+    <div class="hint">CSV or Excel. Select multiple files at once (Ctrl/Cmd+click) to combine split exports — make sure date ranges don't overlap.</div>
+    <div id="reportHeaderRowWrap" class="hidden">
+      <div class="row">
+        <label>Header row #</label>
+        <input type="number" id="reportHeaderRow" value="1" min="1" max="10">
+      </div>
+      <div class="hint" style="margin:0;">If there's a title/banner row above the real column headers, set this to that row number.</div>
+    </div>
+    <div id="reportHeaderWarn"></div>
+    <div id="reportMapGrid" class="hidden">
+      <div class="map-grid">
+        <div class="map-row"><label>Order ID column</label><select id="mapOrderId"></select></div>
+        <div class="map-row"><label>SKU column</label><select id="mapSku"></select></div>
+        <div class="map-row"><label>Qty column</label><select id="mapQty"></select></div>
+        <div class="map-row"><label>Price / Revenue column</label><select id="mapPrice"></select></div>
+        <div class="map-row"><label>Payment method</label><select id="mapPayment"></select></div>
+        <div class="map-row" id="couponMapWrap"><label>Discount / Coupon code</label><select id="mapCoupon"></select></div>
+        <div class="map-row"><label>Order date column</label><select id="mapOrderDate"></select></div>
+      </div>
+      <div class="row" id="priceIsTotalRow">
+        <input type="checkbox" id="priceIsTotal">
+        <label for="priceIsTotal" style="min-width:auto;font-weight:400;">Price column is already a row total (don't multiply by qty)</label>
+      </div>
+      <!-- Myntra: moved-out filter -->
+      <div id="movedOutWrap" class="hidden">
+        <div class="row" style="margin-top:8px;">
+          <input type="checkbox" id="movedOutFilter" checked>
+          <label for="movedOutFilter" style="min-width:auto;font-weight:400;">Filter: shipped, net of returns (Option A)</label>
+        </div>
+        <div id="dateMapExtra" class="map-grid" style="margin-top:8px;">
+          <div class="map-row"><label>Return date column</label><select id="mapReturnDate"></select></div>
+          <div class="map-row"><label>RTO date column</label><select id="mapRtoDate"></select></div>
+        </div>
+      </div>
+      <!-- Meesho: status filter -->
+      <div id="statusWrap" class="hidden">
+        <div class="map-row" style="margin-top:10px;"><label>Order status column</label><select id="mapStatus"></select></div>
+        <div id="statusChecklist" style="margin-top:8px;"></div>
+      </div>
+    </div>
+  </div>
 
-    let rows, headers;
-    if (name.endsWith(".csv")) {
-      const text   = file.getBlob().getDataAsString("UTF-8");
-      const parsed = Utilities.parseCsv(text);
-      const result = parseRows(parsed);
-      rows = result.rows; headers = result.headers;
-    } else {
-      ui.alert(
-        "Please upload the raw Shopify export as .csv\n\n" +
-        "Shopify → Orders → Export → choose CSV (do NOT open/resave in Excel first)."
-      );
-      return;
+  <!-- ── RUN ─────────────────────────────────── -->
+  <div class="section" id="dealPricingSection" style="display:none;">
+    <h2>Deal Pricing</h2>
+    <div class="hint">Upload a costing sheet above. The table below shows the minimum sale price per SKU to stay at or below 26% COGS (i.e. gross margin ≥ 74%).</div>
+    <div class="row">
+      <label>COGS % target</label>
+      <input type="number" id="dealCogsTarget" value="26" min="1" max="99" style="width:70px;">
+      <span style="font-size:13px;color:var(--muted);">%</span>
+    </div>
+  </div>
+
+  <button class="run-btn" id="runBtn" disabled>▶ Run Report</button>
+
+  <!-- ── RESULTS ────────────────────────────── -->
+  <div class="results hidden" id="resultsSection">
+    <h2 id="resultsTitle">Results</h2>
+    <div class="kpi-grid" id="kpiGrid"></div>
+    <div id="freebieInfo" style="margin-bottom:12px;"></div>
+    <div id="unmatchedSection" style="display:none;">
+      <div style="font-weight:600;font-size:13px;margin-bottom:6px;">⚠ Unmatched SKUs (excluded from COGS)</div>
+      <div class="unmatched-list" id="unmatchedList"></div>
+      <button class="download-btn" id="dlUnmatched">⬇ Download Unmatched SKUs CSV</button>
+    </div>
+    <div id="dealTable" style="display:none;"></div>
+    <div class="meta-info" id="metaInfo"></div>
+    <button class="download-btn" id="dlReport" style="display:none;">⬇ Download Full Report CSV</button>
+  </div>
+
+</div>
+
+<script>
+// ── STATE ─────────────────────────────────────────────────────
+const state = {
+  platform: 'shopify',
+  costingRows: null, costingHeaders: [],
+  reportFiles: [], reportRows: null, reportHeaders: [],
+  couponAOA: null, couponRows: null, couponHeaders: [],
+  selectedStatuses: new Set(),
+  lastResult: null,
+};
+
+// ── TABS ──────────────────────────────────────────────────────
+document.querySelectorAll('.tab').forEach(t => {
+  t.addEventListener('click', () => {
+    document.querySelectorAll('.tab').forEach(x => x.classList.remove('active'));
+    t.classList.add('active');
+    state.platform = t.dataset.platform;
+    const isDeal = state.platform === 'dealpricing';
+    document.getElementById('reportLabel').textContent =
+      {shopify:'Shopify',amazon:'Amazon',meesho:'Meesho',myntra:'Myntra',dealpricing:'—'}[state.platform];
+    document.getElementById('couponSection').style.display = state.platform === 'shopify' ? '' : 'none';
+    document.getElementById('dealPricingSection').style.display = isDeal ? '' : 'none';
+    document.querySelector('.section:nth-child(3)').style.display = isDeal ? 'none' : '';
+    // reset moved-out filter when leaving Myntra
+    if (state.platform !== 'myntra') {
+      const cb = document.getElementById('movedOutFilter');
+      if (cb) cb.checked = false;
     }
+    document.getElementById('movedOutWrap').classList.toggle('hidden', state.platform !== 'myntra');
+    document.getElementById('couponMapWrap').style.display = state.platform === 'shopify' ? '' : 'none';
+    document.getElementById('statusWrap').classList.toggle('hidden', state.platform !== 'meesho');
+    document.getElementById('resultsSection').classList.add('hidden');
+    checkReady();
+  });
+});
 
-    if (!rows || rows.length === 0) {
-      ui.alert("❌ File appears empty, or columns 'Name' and 'Lineitem sku' not found.");
-      return;
-    }
-
-    const reportDate = detectReportDate(rows, headers);
-    ss.toast("Loading cost sheet…", "D'Chica COGS", -1);
-    const costMap = loadCostMap();
-
-    ss.toast("Calculating COGS for " + reportDate + "…", "D'Chica COGS", -1);
-    const noFreebiecoupons = loadNoFreebiecoupons(reportDate);
-    const summary = calculateCOGS(rows, headers, costMap, noFreebiecoupons);
-    summary.date  = reportDate;
-
-    writeToSheet(ss, summary);
-    ss.toast("✅ Done! See COGS Report tab.", "D'Chica COGS", 6);
-
-  } catch(e) {
-    ui.alert("❌ Error: " + e.message);
-    throw e;
-  }
-}
-
-// ── PARSING ───────────────────────────────────────────────────
-
-function parseRows(rows) {
-  if (rows.length < 2) return { rows: [], headers: {} };
-  let headers = {}, headerIdx = 0;
-  for (let i = 0; i < Math.min(5, rows.length); i++) {
-    const idx = {};
-    rows[i].forEach((h, j) => { if (h) idx[String(h).trim()] = j; });
-    if (idx["Name"] !== undefined && idx["Lineitem sku"] !== undefined) {
-      headers = idx; headerIdx = i; break;
-    }
-  }
-  return {
-    rows:    rows.slice(headerIdx + 1).filter(r => r.some(c => c !== "")),
-    headers: headers
+// ── FILE PARSING ──────────────────────────────────────────────
+function parseRawFile(file, cb) {
+  const reader = new FileReader();
+  reader.onload = e => {
+    try {
+      const data = e.target.result;
+      const wb = XLSX.read(data, {type: 'array', raw: false});
+      const ws = wb.Sheets[wb.SheetNames[0]];
+      const aoa = XLSX.utils.sheet_to_json(ws, {header:1, defval:''});
+      cb(aoa);
+    } catch(err) { alert('Could not parse file: ' + err.message); }
   };
+  reader.readAsArrayBuffer(file);
 }
 
-function detectReportDate(rows, headers) {
-  // Prefer "Created at" since "Paid at" can be blank for pending orders
-  const col = headers["Created at"] !== undefined ? headers["Created at"] : headers["Paid at"];
-  if (col === undefined) return Utilities.formatDate(new Date(), "Asia/Kolkata", "yyyy-MM-dd");
-
-  for (const row of rows) {
-    if (!row[col]) continue;
-    // Shopify format is often dd-mm-yyyy
-    const raw = String(row[col]).trim();
-    let d = new Date(raw);
-    if (isNaN(d.getTime())) {
-      const m = raw.match(/^(\d{1,2})-(\d{1,2})-(\d{4})/);
-      if (m) d = new Date(`${m[3]}-${m[2]}-${m[1]}`);
-    }
-    if (!isNaN(d.getTime())) return Utilities.formatDate(d, "Asia/Kolkata", "yyyy-MM-dd");
+function rowsFromAOA(aoa, headerRowInput) {
+  const headerRow = Math.max(1, parseInt(headerRowInput) || 1) - 1;
+  const rawHeaders = aoa[headerRow] || [];
+  const headers = rawHeaders.map(h => String(h || '').trim()).filter(h => h);
+  const headerIdx = {};
+  rawHeaders.forEach((h,i) => { if (h) headerIdx[String(h).trim()] = i; });
+  const rows = [];
+  for (let i = headerRow + 1; i < aoa.length; i++) {
+    const r = aoa[i];
+    if (!r || r.every(c => c === '' || c === null || c === undefined)) continue;
+    const obj = {};
+    headers.forEach(h => { obj[h] = String(r[headerIdx[h]] ?? '').trim(); });
+    rows.push(obj);
   }
-  return Utilities.formatDate(new Date(), "Asia/Kolkata", "yyyy-MM-dd");
+  return {headers, rows};
 }
 
-// ── COST SHEET LOOKUP ─────────────────────────────────────────
-
-function loadCostMap() {
-  const sheet = SpreadsheetApp.openById(COSTING_SHEET_ID).getSheets()[0];
-  const data  = sheet.getDataRange().getValues();
-  const map   = {};
-
-  for (let i = 1; i < data.length; i++) {
-    const sku = String(data[i][0] || "").trim();
-    if (!sku) continue;
-
-    const newCost  = parseFloat(String(data[i][NEW_COST_COL] || "").replace(/,/g,"").trim());
-    const currCost = parseFloat(String(data[i][1]            || "").replace(/,/g,"").trim());
-    const cost = !isNaN(newCost) ? newCost : (!isNaN(currCost) ? currCost : null);
-
-    if (cost !== null) map[sku] = cost;   // last row wins for duplicates
+function guessCol(headers, keywords, exclude=[]) {
+  for (const kw of keywords) {
+    const match = headers.find(h => h.toLowerCase().includes(kw.toLowerCase()) &&
+      !exclude.some(ex => h.toLowerCase().includes(ex.toLowerCase())));
+    if (match) return match;
   }
+  return headers[0] || '';
+}
+
+function fillSelect(el, headers, defaultVal) {
+  if (!el) return;
+  const prev = el.value;
+  el.innerHTML = '<option value="">— none —</option>' +
+    headers.map(h => `<option value="${h}"${h===defaultVal||h===prev?'selected':''}>${h}</option>`).join('');
+}
+
+// ── COSTING SHEET ─────────────────────────────────────────────
+document.getElementById('costingFile').addEventListener('change', e => {
+  const file = e.target.files[0]; if (!file) return;
+  parseRawFile(file, aoa => {
+    state.costingAOA = aoa;
+    document.getElementById('costingStatus').textContent = `${file.name} — ${aoa.length} rows`;
+    document.getElementById('costingStatus').className = 'filestatus ok';
+    document.getElementById('costingHeaderRowWrap').classList.remove('hidden');
+    rebuildCosting();
+  });
+});
+document.getElementById('costingHeaderRow').addEventListener('input', rebuildCosting);
+
+function rebuildCosting() {
+  if (!state.costingAOA) return;
+  const {headers, rows} = rowsFromAOA(state.costingAOA, document.getElementById('costingHeaderRow').value);
+  state.costingHeaders = headers;
+  document.getElementById('costingMapRow').classList.remove('hidden');
+  fillSelect(document.getElementById('costSkuCol'), headers, guessCol(headers, ['sku','online sku']));
+  fillSelect(document.getElementById('costNewCol'), headers, guessCol(headers, ['new cost','viscose','new','base cost'], []));
+  fillSelect(document.getElementById('costFallbackCol'), headers, guessCol(headers, ['current cost','cost price','cost'], ['new','base']));
+  const warnEl = document.getElementById('costingHeaderWarn');
+  if (headers.length <= 1) {
+    warnEl.innerHTML = `<div class="warn-box">Only ${headers.length} column detected at header row ${document.getElementById('costingHeaderRow').value}. There's likely a title/banner row above — increase the header row number.</div>`;
+  } else {
+    warnEl.innerHTML = '';
+  }
+  // build cost map for deal pricing preview
+  state.costingRows = rows;
+  checkReady();
+}
+
+function buildCostMap() {
+  const rows = state.costingRows;
+  if (!rows) return {};
+  const skuCol = document.getElementById('costSkuCol').value;
+  const newCol = document.getElementById('costNewCol').value;
+  const fbCol  = document.getElementById('costFallbackCol').value;
+  const map = {};
+  rows.forEach(r => {
+    const sku = normSku(r[skuCol]);
+    if (!sku) return;
+    const newCost = parseNum(r[newCol]);
+    const fbCost  = parseNum(r[fbCol]);
+    const cost = newCost !== null ? newCost : (fbCost !== null ? fbCost : null);
+    if (cost !== null) map[sku] = cost;
+  });
   return map;
 }
 
-function stripSize(sku) {
-  // Returns master SKU without size (e.g. DCWNCPBJU8932/XL → DCWNCPBJU8932)
-  // Used ONLY for freebie prefix check, not for cost lookup
-  return String(sku || "").split("/")[0].trim();
+function buildCostMapFull() {
+  // full SKU (with size) lookup — for the v6 fix
+  const rows = state.costingRows;
+  if (!rows) return {};
+  const skuCol = document.getElementById('costSkuCol').value;
+  const newCol = document.getElementById('costNewCol').value;
+  const fbCol  = document.getElementById('costFallbackCol').value;
+  const map = {};
+  rows.forEach(r => {
+    const sku = String(r[skuCol] || '').trim();
+    if (!sku) return;
+    const newCost = parseNum(r[newCol]);
+    const fbCost  = parseNum(r[fbCol]);
+    const cost = newCost !== null ? newCost : (fbCost !== null ? fbCost : null);
+    if (cost !== null) map[sku] = cost;
+  });
+  return map;
 }
 
-// ── COUPON LIST ───────────────────────────────────────────────
+// ── COUPON SHEET ──────────────────────────────────────────────
+document.getElementById('couponFile').addEventListener('change', e => {
+  const file = e.target.files[0]; if (!file) return;
+  parseRawFile(file, aoa => {
+    state.couponAOA = aoa;
+    document.getElementById('couponStatus').textContent = `${file.name} — ${aoa.length} rows`;
+    document.getElementById('couponStatus').className = 'filestatus ok';
+    rebuildCoupon();
+  });
+});
 
-function loadNoFreebiecoupons(dateStr) {
-  try {
-    const sheet  = SpreadsheetApp.openById(COUPON_SHEET_ID).getSheets()[0];
-    const data   = sheet.getDataRange().getValues();
-    const active = new Set();
-    const target = new Date(dateStr + "T12:00:00");
-    for (let i = 1; i < data.length; i++) {
-      const code = String(data[i][0] || "").trim().toUpperCase();
-      if (!code) continue;
-      const from = data[i][1] ? new Date(data[i][1]) : new Date("2000-01-01");
-      const to   = data[i][2] ? new Date(data[i][2]) : new Date("2099-12-31");
-      from.setHours(0,0,0,0); to.setHours(23,59,59,999);
-      if (target >= from && target <= to) active.add(code);
+function rebuildCoupon() {
+  if (!state.couponAOA) return;
+  const {headers, rows} = rowsFromAOA(state.couponAOA, 1);
+  state.couponRows = rows; state.couponHeaders = headers;
+  document.getElementById('couponMapRow').classList.remove('hidden');
+  fillSelect(document.getElementById('couponCodeCol'), headers, guessCol(headers, ['coupon','code','discount']));
+  fillSelect(document.getElementById('couponSkuCol'), headers, guessCol(headers, ['freebie sku','sku','item']));
+  fillSelect(document.getElementById('couponOtherCol'), headers, guessCol(headers, ['other','included','cart']));
+}
+
+function buildCouponRules() {
+  if (!state.couponRows) return {};
+  const codeCol  = document.getElementById('couponCodeCol').value;
+  const skuCol   = document.getElementById('couponSkuCol').value;
+  const otherCol = document.getElementById('couponOtherCol').value;
+  const rules = {};
+  state.couponRows.forEach(r => {
+    const code = String(r[codeCol] || '').trim().toUpperCase();
+    if (!code) return;
+    const skus = String(r[skuCol] || '').split(',').map(s => normSku(s.trim())).filter(Boolean);
+    const other = String(r[otherCol] || '').trim().toUpperCase() === 'YES';
+    rules[code] = {skus, other};
+  });
+  return rules;
+}
+
+// ── SALES REPORT ──────────────────────────────────────────────
+document.getElementById('reportFile').addEventListener('change', e => {
+  const files = Array.from(e.target.files || []); if (!files.length) return;
+  state.reportFiles = [];
+  let pending = files.length;
+  const parts = [];
+  files.forEach(file => {
+    parseRawFile(file, aoa => {
+      state.reportFiles.push({name: file.name, aoa});
+      parts.push(`${file.name} (${aoa.length} rows)`);
+      if (--pending === 0) {
+        document.getElementById('reportStatus').textContent = parts.join(' + ');
+        document.getElementById('reportStatus').className = 'filestatus ok';
+        document.getElementById('reportHeaderRowWrap').classList.remove('hidden');
+        rebuildReport();
+      }
+    });
+  });
+});
+document.getElementById('reportHeaderRow').addEventListener('input', rebuildReport);
+
+function rebuildReport() {
+  if (!state.reportFiles.length) return;
+  const headerRowNum = document.getElementById('reportHeaderRow').value;
+  let headers = null; let rows = []; const mismatch = [];
+  state.reportFiles.forEach(f => {
+    const parsed = rowsFromAOA(f.aoa, headerRowNum);
+    if (!headers) headers = parsed.headers;
+    else if (JSON.stringify(parsed.headers) !== JSON.stringify(headers)) mismatch.push(f.name);
+    rows = rows.concat(parsed.rows);
+  });
+  state.reportRows = rows; state.reportHeaders = headers || [];
+  document.getElementById('reportMapGrid').classList.remove('hidden');
+  fillSelect(document.getElementById('mapOrderId'), headers, guessCol(headers, ['order id','name','order number','order #']));
+  fillSelect(document.getElementById('mapSku'), headers, guessCol(headers, ['lineitem sku','sku','asin','seller sku']));
+  fillSelect(document.getElementById('mapQty'), headers, guessCol(headers, ['lineitem quantity','qty','quantity','units ordered','units']));
+  fillSelect(document.getElementById('mapPrice'), headers, guessCol(headers, ['total','lineitem price','unit price','price','ordered product sales','supplier listed price'], ['discount']));
+  fillSelect(document.getElementById('mapPayment'), headers, guessCol(headers, ['payment method','payment']));
+  fillSelect(document.getElementById('mapCoupon'), headers, guessCol(headers, ['discount code','coupon']));
+  fillSelect(document.getElementById('mapOrderDate'), headers, guessCol(headers, ['created at','order date','date','shipped on']));
+  // Myntra extras
+  fillSelect(document.getElementById('mapReturnDate'), headers, guessCol(headers, ['return creation date','return date']));
+  fillSelect(document.getElementById('mapRtoDate'), headers, guessCol(headers, ['rto creation date','rto date']));
+  // Meesho status
+  fillSelect(document.getElementById('mapStatus'), headers, guessCol(headers, ['reason for credit','status','order status']));
+
+  const warnEl = document.getElementById('reportHeaderWarn');
+  let warnHtml = '';
+  if (!headers || headers.length <= 1)
+    warnHtml += `<div class="warn-box">Only ${headers ? headers.length : 0} usable column at header row ${headerRowNum}. Increase the header row number.</div>`;
+  if (mismatch.length)
+    warnHtml += `<div class="warn-box">These files have different columns: ${mismatch.join(', ')}. Mapping is based on the first file.</div>`;
+  warnEl.innerHTML = warnHtml;
+
+  // duplicate order check
+  if (state.reportFiles.length >= 2) {
+    const oId = document.getElementById('mapOrderId').value;
+    const oSku = document.getElementById('mapSku').value;
+    if (oId && oSku) {
+      const seen = new Set(); let dupes = 0;
+      rows.forEach(r => {
+        const key = `${r[oId]}|${r[oSku]}`;
+        if (seen.has(key)) dupes++;
+        else seen.add(key);
+      });
+      if (dupes > 0)
+        warnEl.innerHTML += `<div class="warn-box">${dupes} duplicate order-lines detected across files — possible overlapping date ranges. Check before trusting results.</div>`;
     }
-    return active;
-  } catch(e) {
-    return new Set(["FLAT50","FREESHAPEWEAR"]);
   }
+
+  // build Meesho status checklist
+  if (state.platform === 'meesho') rebuildStatusChecklist();
+  checkReady();
 }
 
-// ── COGS CALCULATION ──────────────────────────────────────────
+document.getElementById('mapStatus').addEventListener('change', rebuildStatusChecklist);
 
-function calculateCOGS(rows, headers, costMap, noFreebiecoupons) {
-  const cName  = headers["Name"];
-  const cQty   = headers["Lineitem quantity"];
-  const cSku   = headers["Lineitem sku"];
-  const cTotal = headers["Total"];
-  const cDisc  = headers["Discount Code"];
+function rebuildStatusChecklist() {
+  const statusCol = document.getElementById('mapStatus').value;
+  const wrap = document.getElementById('statusChecklist');
+  if (!statusCol || !state.reportRows) { wrap.innerHTML = ''; return; }
+  const counts = {};
+  state.reportRows.forEach(r => { const v = String(r[statusCol] || '').trim(); if (v) counts[v] = (counts[v]||0)+1; });
+  const values = Object.keys(counts).sort((a,b) => counts[b]-counts[a]);
+  const autoInclude = new Set(['SHIPPED','DELIVERED']);
+  state.selectedStatuses = new Set(values.filter(v => autoInclude.has(v.toUpperCase())));
+  wrap.innerHTML = `<div class="ok-box">SHIPPED and DELIVERED are auto-selected. Adjust below if needed.</div>` +
+    `<div style="display:flex;flex-direction:column;gap:6px;margin-top:8px;">` +
+    values.map(v => `<label style="display:flex;align-items:center;gap:8px;font-family:var(--mono);font-size:12px;"><input type="checkbox" class="statusCheck" value="${v}" ${state.selectedStatuses.has(v)?'checked':''}> ${v} <span style="color:var(--muted);">(${counts[v]} rows)</span></label>`).join('') +
+    `</div>`;
+  wrap.querySelectorAll('.statusCheck').forEach(cb => {
+    cb.addEventListener('change', () => { if (cb.checked) state.selectedStatuses.add(cb.value); else state.selectedStatuses.delete(cb.value); checkReady(); });
+  });
+}
 
-  // Order → discount, order → revenue (first non-empty row wins)
-  const orderDisc = {}, orderRev = {};
-  rows.forEach(row => {
-    const o = String(row[cName] || "").trim();
-    if (!o) return;
-    if (orderDisc[o] === undefined) {
-      orderDisc[o] = String(row[cDisc] || "").trim().toUpperCase();
+// ── READY CHECK ───────────────────────────────────────────────
+function checkReady() {
+  const isDeal = state.platform === 'dealpricing';
+  const costOk = state.costingRows && (state.costingHeaders.length > 1);
+  const reportOk = isDeal ? true : (state.reportRows && (state.reportHeaders.length > 1));
+  document.getElementById('runBtn').disabled = !(costOk && reportOk);
+}
+
+// ── SKU HELPERS ───────────────────────────────────────────────
+function normSku(s) {
+  if (!s) return '';
+  s = String(s).trim().toUpperCase();
+  const m = s.match(/^([^/\-_]+)/);
+  return m ? m[1] : s;
+}
+
+function parseNum(s) {
+  if (s === null || s === undefined || s === '') return null;
+  const n = parseFloat(String(s).replace(/[₹,\s]/g,''));
+  return isNaN(n) ? null : n;
+}
+
+// ── MAIN RUN ──────────────────────────────────────────────────
+document.getElementById('runBtn').addEventListener('click', runReport);
+
+function runReport() {
+  if (state.platform === 'dealpricing') { runDealPricing(); return; }
+
+  const costMap = buildCostMapFull();  // full SKU with size
+  const costMapBase = buildCostMap();  // base SKU (stripped), fallback
+  const couponRules = state.platform === 'shopify' ? buildCouponRules() : {};
+  const allFreebieSkus = new Set();
+  Object.values(couponRules).forEach(r => r.skus.forEach(s => allFreebieSkus.add(s)));
+
+  const oIdCol     = document.getElementById('mapOrderId').value;
+  const oSkuCol    = document.getElementById('mapSku').value;
+  const oQtyCol    = document.getElementById('mapQty').value;
+  const oPriceCol  = document.getElementById('mapPrice').value;
+  const oPayCol    = document.getElementById('mapPayment').value;
+  const oCoupCol   = document.getElementById('mapCoupon').value;
+  const oDateCol   = document.getElementById('mapOrderDate').value;
+  const priceIsTotal = document.getElementById('priceIsTotal').checked;
+
+  // Myntra date filter
+  const movedOut = document.getElementById('movedOutFilter').checked && state.platform === 'myntra';
+  const retCol = document.getElementById('mapReturnDate').value;
+  const rtoCol = document.getElementById('mapRtoDate').value;
+
+  // Meesho status filter
+  const useStatusFilter = state.platform === 'meesho' && state.selectedStatuses.size > 0;
+
+  const ERROR500_CUTOFF = new Date('2026-06-29');
+  const FREEBIE_PREFIX = 'DCFR';
+
+  // Order-level aggregation (revenue, payment, coupon on first non-blank row)
+  const orderRevMap = {}, orderPayMap = {}, orderCoupMap = {};
+  state.reportRows.forEach(r => {
+    const o = String(r[oIdCol] || '').trim(); if (!o) return;
+    if (orderRevMap[o] === undefined && oPriceCol) {
+      const p = parseNum(r[oPriceCol]);
+      if (p !== null && p > 0) orderRevMap[o] = p;
     }
-    if (orderRev[o] === undefined && cTotal !== undefined) {
-      const r = parseFloat(String(row[cTotal] || "").replace(/[₹,]/g,"").trim());
-      if (!isNaN(r) && r > 0) orderRev[o] = r;
-    }
+    if (orderPayMap[o] === undefined && oPayCol && r[oPayCol]) orderPayMap[o] = r[oPayCol];
+    if (orderCoupMap[o] === undefined && oCoupCol && r[oCoupCol]) orderCoupMap[o] = r[oCoupCol];
+  });
+
+  // Backfill payment/coupon within orders
+  state.reportRows.forEach(r => {
+    const o = String(r[oIdCol] || '').trim(); if (!o) return;
+    if (!r[oPayCol] && orderPayMap[o]) r[oPayCol] = orderPayMap[o];
+    if (!r[oCoupCol] && orderCoupMap[o]) r[oCoupCol] = orderCoupMap[o];
   });
 
   let totalCOGS = 0, totalRev = 0, totalQty = 0;
-  let exclCOGS  = 0, exclUnits = 0;
-  const missing = new Set(), triggered = new Set(), seen = new Set();
+  let exclCOGS = 0, exclUnits = 0;
+  const missing = new Map(), triggeredCoupons = new Set(), seenOrders = new Set();
+  const lineRows = [];
 
-  rows.forEach(row => {
-    const o = String(row[cName] || "").trim();
-    if (!o) return;
+  state.reportRows.forEach(r => {
+    const o = String(r[oIdCol] || '').trim(); if (!o) return;
 
-    // v6 FIX: use full SKU (with size) for cost lookup
-    const fullSku  = String(row[cSku] || "").trim();
-    const master   = stripSize(fullSku);   // used only for freebie prefix check
-    const qty      = parseInt(row[cQty] || 0) || 0;
-    const cost     = costMap[fullSku];     // ← full SKU lookup e.g. DCWNCPBJU8932/XL
-    const disc     = orderDisc[o] || "";
-    const excl     = noFreebiecoupons.has(disc);
-    const freebie  = master.startsWith(FREEBIE_PREFIX);
-    const skip     = freebie && excl;
+    // Myntra moved-out filter
+    if (movedOut) {
+      const shipped = String(r[oDateCol] || '').trim();
+      const ret = retCol ? String(r[retCol] || '').trim() : '';
+      const rto = rtoCol ? String(r[rtoCol] || '').trim() : '';
+      if (!shipped) return;
+      if (ret || rto) return;
+    }
+
+    // Meesho status filter
+    if (useStatusFilter) {
+      const statusCol = document.getElementById('mapStatus').value;
+      const sv = String(r[statusCol] || '').trim().toUpperCase();
+      if (!state.selectedStatuses.has(sv)) return;
+    }
+
+    const rawSku = String(r[oSkuCol] || '').trim();
+    const fullSku = rawSku.toUpperCase();
+    const baseSku = normSku(rawSku);
+    const qty = Math.max(0, parseInt(r[oQtyCol] || 0) || 0);
+    if (!rawSku || qty === 0) return;
+
+    // Revenue — sum once per order from Total column
+    if (!seenOrders.has(o)) {
+      seenOrders.add(o);
+      const rev = orderRevMap[o];
+      if (rev !== null && rev !== undefined) totalRev += rev;
+    }
+
+    // Cost lookup: full SKU first, then base SKU fallback
+    let cost = costMap[fullSku];
+    if (cost === undefined) cost = costMap[rawSku]; // try original case
+    if (cost === undefined) cost = costMapBase[baseSku];
 
     if (cost === undefined) {
-      if (fullSku) missing.add(fullSku);
-    } else {
-      const icogs = cost * qty;
-      if (skip) {
-        exclCOGS += icogs; exclUnits += qty;
-        triggered.add(disc);
-      } else {
-        totalCOGS += icogs; totalQty += qty;
+      if (fullSku) {
+        const prev = missing.get(fullSku) || {qty:0, orders: new Set()};
+        prev.qty += qty; prev.orders.add(o);
+        missing.set(fullSku, prev);
+      }
+      lineRows.push({order:o, sku:rawSku, qty, cost:'?', cogs:'?', excluded:false, reason:''});
+      return;
+    }
+
+    // Freebie logic (Shopify only)
+    let excluded = false, reason = '';
+    if (state.platform === 'shopify') {
+      const isFreebie = fullSku.startsWith(FREEBIE_PREFIX) || allFreebieSkus.has(baseSku);
+      const couponRaw = String(r[oCoupCol] || '').toUpperCase().trim();
+      const payment = String(r[oPayCol] || '').toLowerCase();
+      const isCOD = payment.includes('cod') || payment.includes('cash on delivery');
+
+      if (isFreebie) {
+        const matchedCoupon = Object.keys(couponRules).find(c => couponRaw.includes(c));
+        let isLegit = false;
+        if (matchedCoupon) {
+          const rule = couponRules[matchedCoupon];
+          isLegit = rule.other || rule.skus.includes(baseSku);
+          // ERROR500: only applies from 2026-06-29 onward
+          if (matchedCoupon === 'ERROR500' && oDateCol) {
+            try {
+              const od = new Date(r[oDateCol]);
+              if (!isNaN(od) && od < ERROR500_CUTOFF) isLegit = true;
+            } catch(e) {}
+          }
+        } else {
+          isLegit = true; // freebie with no matching coupon → shipped, count it
+        }
+        if (!isLegit || isCOD) { excluded = true; reason = isCOD ? 'COD' : matchedCoupon; }
       }
     }
 
-    if (!seen.has(o)) {
-      seen.add(o);
-      totalRev += orderRev[o] || 0;
+    const icogs = cost * qty;
+    if (excluded) {
+      exclCOGS += icogs; exclUnits += qty;
+      if (reason && reason !== 'COD') triggeredCoupons.add(reason);
+    } else {
+      totalCOGS += icogs; totalQty += qty;
     }
+    lineRows.push({order:o, sku:rawSku, qty, cost, cogs: excluded ? 0 : icogs, excluded, reason});
   });
 
-  return {
-    orders:    seen.size,
-    qty:       totalQty,
-    revenue:   Math.round(totalRev  * 100) / 100,
-    cogs:      Math.round(totalCOGS * 100) / 100,
-    cogsPct:   totalRev ? totalCOGS / totalRev : 0,
-    exclCOGS:  Math.round(exclCOGS  * 100) / 100,
-    exclUnits: exclUnits,
-    triggered: [...triggered].join(", ") || "none",
-    missing:   [...missing].join(", ")   || "—",
+  // ── RENDER RESULTS ────────────────────────────────────────
+  const cogsPct = totalRev > 0 ? totalCOGS / totalRev : 0;
+  const marginPct = 1 - cogsPct;
+
+  const kpis = [
+    {label:'Orders', value: seenOrders.size.toLocaleString('en-IN'), cls:''},
+    {label:'Units (COGS)', value: totalQty.toLocaleString('en-IN'), cls:''},
+    {label:'Revenue', value: '₹' + totalRev.toLocaleString('en-IN',{maximumFractionDigits:0}), cls:''},
+    {label:'COGS', value: '₹' + totalCOGS.toLocaleString('en-IN',{maximumFractionDigits:0}), cls:''},
+    {label:'COGS %', value: (cogsPct*100).toFixed(1)+'%', cls: cogsPct>0.26?'red':'green'},
+    {label:'Gross Margin', value: (marginPct*100).toFixed(1)+'%', cls: marginPct>=0.74?'green':'red'},
+  ];
+
+  document.getElementById('kpiGrid').innerHTML = kpis.map(k =>
+    `<div class="kpi"><div class="label">${k.label}</div><div class="value ${k.cls}">${k.value}</div></div>`
+  ).join('');
+
+  // freebie info
+  let freebieHtml = '';
+  if (exclCOGS > 0) {
+    freebieHtml = `<div class="ok-box"><strong>Freebie exclusions:</strong> ₹${exclCOGS.toLocaleString('en-IN',{maximumFractionDigits:0})} COGS removed · ${exclUnits} units · Coupons: ${triggeredCoupons.size > 0 ? [...triggeredCoupons].join(', ') : 'COD only'}</div>`;
+  }
+  document.getElementById('freebieInfo').innerHTML = freebieHtml;
+
+  // unmatched SKUs
+  if (missing.size > 0) {
+    document.getElementById('unmatchedSection').style.display = '';
+    document.getElementById('unmatchedList').innerHTML = [...missing.entries()]
+      .sort((a,b) => b[1].qty - a[1].qty)
+      .map(([sku, d]) => `<div>${sku} — ${d.qty} units (${d.orders.size} orders)</div>`).join('');
+  } else {
+    document.getElementById('unmatchedSection').style.display = 'none';
+  }
+
+  document.getElementById('dealTable').style.display = 'none';
+  document.getElementById('metaInfo').textContent =
+    `Costing rows: ${state.costingRows.length} | Report rows: ${state.reportRows.length} | Missing SKUs: ${missing.size}`;
+  document.getElementById('dlReport').style.display = '';
+  document.getElementById('resultsSection').classList.remove('hidden');
+  document.getElementById('resultsTitle').textContent = `Results — ${state.platform.charAt(0).toUpperCase()+state.platform.slice(1)}`;
+
+  state.lastResult = { lineRows, missing, summary: {orders: seenOrders.size, qty: totalQty, revenue: totalRev, cogs: totalCOGS, cogsPct, exclCOGS, exclUnits} };
+
+  // Download full report
+  document.getElementById('dlReport').onclick = () => {
+    const rows = lineRows.map(r => [r.order, r.sku, r.qty, r.cost, r.cogs, r.excluded?'YES':'', r.reason]);
+    downloadCSV([['Order','SKU','Qty','Unit Cost','COGS','Excluded','Reason'], ...rows], 'dchica_cogs_report.csv');
+  };
+  document.getElementById('dlUnmatched').onclick = () => {
+    const rows = [...missing.entries()].sort((a,b)=>b[1].qty-a[1].qty)
+      .map(([sku,d]) => [sku, d.qty, d.orders.size, [...d.orders].slice(0,5).join('; ')]);
+    downloadCSV([['SKU','Units','Orders','Sample Order IDs'], ...rows], 'dchica_unmatched_skus.csv');
   };
 }
 
-// ── WRITE TO SHEET ────────────────────────────────────────────
-
-function ensureHeaders(ss) {
-  let sheet = ss.getSheetByName("COGS Report");
-  if (!sheet) sheet = ss.insertSheet("COGS Report");
-  const a1 = sheet.getRange(1,1).getValue();
-  if (a1 !== "Date") {
-    const headers = [
-      "Date","Orders","Units Sold","Revenue (₹)","COGS (₹)",
-      "Gross Margin %","COGS %","Freebie COGS Removed (₹)",
-      "Freebie Units Removed","Active No-Freebie Coupons","Missing SKUs"
-    ];
-    sheet.getRange(1,1,1,headers.length)
-         .setValues([headers])
-         .setFontWeight("bold")
-         .setBackground("#1a1a2e")
-         .setFontColor("#ffffff");
-    sheet.setFrozenRows(1);
-  }
-  return sheet;
+// ── DEAL PRICING ──────────────────────────────────────────────
+function runDealPricing() {
+  const costMap = buildCostMapFull();
+  const target = parseFloat(document.getElementById('dealCogsTarget').value) / 100;
+  if (!costMap || Object.keys(costMap).length === 0) { alert('Upload costing sheet first.'); return; }
+  const rows = Object.entries(costMap).sort((a,b) => a[0].localeCompare(b[0]));
+  const html = `<table class="deal-table">
+    <thead><tr><th>SKU</th><th>Cost (₹)</th><th>Min Sale Price @ ${(target*100).toFixed(0)}% COGS (₹)</th></tr></thead>
+    <tbody>${rows.map(([sku,cost]) =>
+      `<tr><td style="font-family:var(--mono)">${sku}</td><td>₹${cost.toFixed(2)}</td><td>₹${(cost/target).toFixed(0)}</td></tr>`
+    ).join('')}</tbody>
+  </table>`;
+  document.getElementById('dealTable').innerHTML = html;
+  document.getElementById('dealTable').style.display = '';
+  document.getElementById('kpiGrid').innerHTML = `<div class="kpi"><div class="label">SKUs</div><div class="value">${rows.length}</div></div>`;
+  document.getElementById('freebieInfo').innerHTML = '';
+  document.getElementById('unmatchedSection').style.display = 'none';
+  document.getElementById('metaInfo').textContent = `Target COGS: ${(target*100).toFixed(0)}% | Min price = cost ÷ ${target.toFixed(2)}`;
+  document.getElementById('dlReport').style.display = '';
+  document.getElementById('dlReport').onclick = () => {
+    downloadCSV([['SKU','Cost','Min Sale Price'],
+      ...rows.map(([sku,c]) => [sku, c.toFixed(2), (c/target).toFixed(0)])], 'dchica_deal_pricing.csv');
+  };
+  document.getElementById('resultsSection').classList.remove('hidden');
+  document.getElementById('resultsTitle').textContent = 'Deal Pricing';
 }
 
-function writeToSheet(ss, s) {
-  const sheet = ensureHeaders(ss);
-  const data  = sheet.getDataRange().getValues();
-  let row = -1;
-  for (let i = 1; i < data.length; i++) {
-    if (String(data[i][0]) === s.date) { row = i + 1; break; }
-  }
-  if (row === -1) row = sheet.getLastRow() + 1;
-
-  sheet.getRange(row, 1, 1, 11).setValues([[
-    s.date, s.orders, s.qty, s.revenue, s.cogs,
-    ((1 - s.cogsPct)*100).toFixed(1) + "%",
-    (s.cogsPct*100).toFixed(2) + "%",
-    s.exclCOGS, s.exclUnits, s.triggered, s.missing
-  ]]);
-  sheet.getRange(row, 4, 1, 2).setNumberFormat("₹#,##0.00");
-  sheet.getRange(row, 8, 1, 1).setNumberFormat("₹#,##0.00");
-  sheet.getRange(row, 1, 1, 11).setBackground(row % 2 === 0 ? "#f5f5f5" : "#ffffff");
-  sheet.autoResizeColumns(1, 11);
-  ss.setActiveSheet(sheet);
+// ── CSV DOWNLOAD ──────────────────────────────────────────────
+function downloadCSV(rows, filename) {
+  const csv = rows.map(r => r.map(c => `"${String(c).replace(/"/g,'""')}"`).join(',')).join('\n');
+  const blob = new Blob(['﻿'+csv], {type:'text/csv;charset=utf-8;'});
+  const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = filename; a.click();
 }
+
+// init
+document.getElementById('couponSection').style.display = '';
+document.querySelector('.section:nth-child(3)').style.display = '';
+document.getElementById('movedOutWrap').classList.add('hidden');
+document.getElementById('statusWrap').classList.add('hidden');
+document.getElementById('dealPricingSection').style.display = 'none';
+</script>
+</body>
+</html>
